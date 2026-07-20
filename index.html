@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,7 @@
     <title>Study Tracker — Sem 2 UniMelb</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             /* Core palette — deep slate with electric violet accent */
@@ -2817,6 +2818,31 @@
             </div>
 
             <div class="settings-section">
+                <div class="settings-section-label">Google Drive sync</div>
+                <div id="drive-signed-out">
+                    <div class="settings-row">
+                        <div class="settings-row-label">
+                            Not connected
+                            <small>Save your data to Drive to access it from other devices</small>
+                        </div>
+                        <button class="settings-close" style="width:auto;height:auto;padding:8px 14px;border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;" onclick="driveSignIn()">Connect</button>
+                    </div>
+                </div>
+                <div id="drive-signed-in" style="display:none;">
+                    <div class="settings-row">
+                        <div class="settings-row-label">
+                            <span id="drive-status-text">Connected</span>
+                            <small id="drive-last-sync"></small>
+                        </div>
+                    </div>
+                    <div class="settings-row" style="gap:8px;">
+                        <button class="settings-close" style="width:auto;height:auto;padding:8px 14px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;" onclick="driveSyncUp()">⬆ Save to Drive</button>
+                        <button class="settings-close" style="width:auto;height:auto;padding:8px 14px;border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;" onclick="if(confirm('This will overwrite what is currently open with whatever is saved in Drive. Continue?')) driveSyncDown()">⬇ Load from Drive</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <div class="settings-section-label">About</div>
                 <div style="font-size:12px;color:var(--text3);line-height:1.7;font-family:'DM Mono',monospace;letter-spacing:0.04em;">
                     Progress auto-saves in your browser.<br>Semester 2 · 12 weeks · UniMelb
@@ -4512,6 +4538,153 @@
             saveTopics(data); renderTopics();
         }
 
+        // ── GOOGLE DRIVE SYNC ─────────────────────────────────
+        const DRIVE_CLIENT_ID = '874464049805-n8ot18to8s1u5hd4r063tqinlhnfmqg5.apps.googleusercontent.com';
+        const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+        const DRIVE_FILENAME = 'study_tracker_data.json';
+        let driveTokenClient = null;
+        let driveAccessToken = null;
+
+        function driveGisReady() {
+            return typeof google !== 'undefined' && google.accounts && google.accounts.oauth2;
+        }
+
+        function driveInit() {
+            if (!driveGisReady()) { setTimeout(driveInit, 300); return; }
+            driveTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: DRIVE_CLIENT_ID,
+                scope: DRIVE_SCOPE,
+                callback: (resp) => {
+                    if (resp && resp.access_token) {
+                        driveAccessToken = resp.access_token;
+                        setDriveUiSignedIn();
+                        toast('Connected to Google Drive');
+                    }
+                }
+            });
+        }
+
+        function driveSignIn() {
+            if (!driveTokenClient) { toast('Still loading Google sign-in — try again in a second'); driveInit(); return; }
+            driveTokenClient.requestAccessToken();
+        }
+
+        function setDriveUiSignedIn() {
+            const out = document.getElementById('drive-signed-out');
+            const inn = document.getElementById('drive-signed-in');
+            if (out) out.style.display = 'none';
+            if (inn) inn.style.display = 'block';
+        }
+
+        function driveSetLastSyncText(msg) {
+            const el = document.getElementById('drive-last-sync');
+            if (el) el.textContent = msg;
+        }
+
+        function driveCollectAllData() {
+            const out = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('unimelb_')) out[k] = localStorage.getItem(k);
+            }
+            return out;
+        }
+
+        function driveApplyAllData(obj) {
+            Object.keys(obj || {}).forEach(k => { if (k.startsWith('unimelb_')) localStorage.setItem(k, obj[k]); });
+        }
+
+        async function driveFindFile() {
+            const q = encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`);
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&spaces=drive`, {
+                headers: { Authorization: `Bearer ${driveAccessToken}` }
+            });
+            if (!res.ok) throw new Error('Drive lookup failed: ' + res.status);
+            const data = await res.json();
+            return (data.files && data.files[0]) || null;
+        }
+
+        async function driveCreateFile(content) {
+            const boundary = 'unimelb_boundary_' + Date.now();
+            const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+            const body =
+                `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+                `--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n` +
+                `--${boundary}--`;
+            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${driveAccessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+                body
+            });
+            if (!res.ok) throw new Error('Drive create failed: ' + res.status);
+            return res.json();
+        }
+
+        async function driveUpdateFile(fileId, content) {
+            const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+                body: content
+            });
+            if (!res.ok) throw new Error('Drive update failed: ' + res.status);
+            return res.json();
+        }
+
+        async function driveDownloadFile(fileId) {
+            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                headers: { Authorization: `Bearer ${driveAccessToken}` }
+            });
+            if (!res.ok) throw new Error('Drive download failed: ' + res.status);
+            return res.json();
+        }
+
+        async function driveSyncUp() {
+            if (!driveAccessToken) { driveSignIn(); return; }
+            try {
+                driveSetLastSyncText('Saving…');
+                const content = JSON.stringify(driveCollectAllData());
+                let fileId = localStorage.getItem('unimelb_drive_file_id');
+                if (!fileId) {
+                    const existing = await driveFindFile();
+                    fileId = existing ? existing.id : null;
+                }
+                if (fileId) {
+                    await driveUpdateFile(fileId, content);
+                } else {
+                    const created = await driveCreateFile(content);
+                    fileId = created.id;
+                }
+                localStorage.setItem('unimelb_drive_file_id', fileId);
+                const now = new Date();
+                driveSetLastSyncText('Saved at ' + now.toLocaleTimeString());
+                toast('Saved to Google Drive');
+            } catch (e) {
+                driveSetLastSyncText('Save failed — try again');
+                toast('Drive save failed');
+            }
+        }
+
+        async function driveSyncDown() {
+            if (!driveAccessToken) { driveSignIn(); return; }
+            try {
+                driveSetLastSyncText('Loading…');
+                let fileId = localStorage.getItem('unimelb_drive_file_id');
+                if (!fileId) {
+                    const existing = await driveFindFile();
+                    fileId = existing ? existing.id : null;
+                }
+                if (!fileId) { driveSetLastSyncText('No data saved in Drive yet'); toast('Nothing found in Drive yet'); return; }
+                const data = await driveDownloadFile(fileId);
+                driveApplyAllData(data);
+                localStorage.setItem('unimelb_drive_file_id', fileId);
+                toast('Loaded from Google Drive — reloading…');
+                setTimeout(() => location.reload(), 600);
+            } catch (e) {
+                driveSetLastSyncText('Load failed — try again');
+                toast('Drive load failed');
+            }
+        }
+
         // ── Init ────────────────────────────────────────────────
         loadState();
         loadStreak();
@@ -4527,6 +4700,7 @@
         loadFocusNote();
         renderExamPrep();
         renderRevision();
+        driveInit();
         setInterval(updateStreakBadge, 5 * 60 * 1000);
     </script>
 </body>
