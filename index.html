@@ -2818,6 +2818,21 @@
             </div>
 
             <div class="settings-section">
+                <div class="settings-section-label">Backup / transfer</div>
+                <div class="settings-row">
+                    <div class="settings-row-label">
+                        Move data between versions
+                        <small>Use this to bring data from your offline copy into a hosted version, or vice versa</small>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="settings-close" style="width:auto;height:auto;padding:8px 14px;border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;" onclick="backupExportJson()">Export</button>
+                        <button class="settings-close" style="width:auto;height:auto;padding:8px 14px;border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;" onclick="document.getElementById('backup-import-input').click()">Import</button>
+                        <input type="file" id="backup-import-input" accept="application/json" style="display:none;" onchange="backupImportJson(this)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <div class="settings-section-label">Google Drive sync</div>
                 <div id="drive-signed-out">
                     <div class="settings-row">
@@ -4592,6 +4607,38 @@
 
         function driveApplyAllData(obj) {
             Object.keys(obj || {}).forEach(k => { if (k.startsWith('unimelb_')) localStorage.setItem(k, obj[k]); });
+        }
+
+        function backupExportJson() {
+            const data = driveCollectAllData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'study_tracker_backup.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast('Backup file downloaded');
+        }
+
+        function backupImportJson(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    driveApplyAllData(data);
+                    toast('Data imported — reloading…');
+                    setTimeout(() => location.reload(), 600);
+                } catch (err) {
+                    toast('That file could not be read as a backup');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
         }
 
         async function driveFindFile() {
