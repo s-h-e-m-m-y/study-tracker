@@ -3,10 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Study Tracker">
-    <link rel="apple-touch-icon" href="icon.png">
     <title>Study Tracker — Sem 2 UniMelb</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
@@ -2509,6 +2505,202 @@
         }
 
         /* ─────────────────────────────────────────
+           CONCEPT WEB
+        ───────────────────────────────────────── */
+        .concept-view-toggle {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .concept-view-btn {
+            padding: 7px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 12.5px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+            .concept-view-btn:hover {
+                border-color: var(--border2);
+                color: var(--text);
+            }
+
+            .concept-view-btn.active {
+                background: linear-gradient(135deg, #7C3AED, #4F46E5);
+                border-color: transparent;
+                color: white;
+            }
+
+        .concept-web-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+        }
+
+        .concept-web-toolbar select,
+        .concept-web-toolbar input {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface2);
+            color: var(--text);
+            font-size: 12.5px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+        }
+
+            .concept-web-toolbar select:focus,
+            .concept-web-toolbar input:focus {
+                border-color: var(--accent-bright);
+                box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+            }
+
+        .concept-web-toolbar select { flex: 1; min-width: 130px; cursor: pointer; }
+        .concept-web-toolbar input { flex: 1.2; min-width: 140px; }
+
+        .concept-web-arrow {
+            color: var(--text3);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+        }
+
+        .concept-web-link-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #7C3AED, #4F46E5);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 12.5px;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s, transform 0.12s;
+        }
+
+            .concept-web-link-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .concept-web-canvas-wrap {
+            position: relative;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 22px 22px;
+            height: 56vh;
+            min-height: 380px;
+            overflow: auto;
+            box-shadow: var(--shadow-sm);
+        }
+
+        #concept-web-canvas {
+            position: relative;
+            width: 1500px;
+            height: 1000px;
+        }
+
+        svg.web-strings { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .web-string-path { stroke: var(--accent-bright); stroke-width: 2; fill: none; opacity: 0.7; }
+        .web-string-label-bg { fill: var(--surface2); opacity: 0.95; }
+        .web-string-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            fill: var(--text2);
+            font-weight: 500;
+        }
+
+        .concept-web-node {
+            position: absolute;
+            width: 140px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            padding: 8px 10px;
+            box-shadow: var(--shadow-sm);
+            cursor: grab;
+            user-select: none;
+            font-family: 'DM Sans', sans-serif;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+
+            .concept-web-node:active { cursor: grabbing; }
+            .concept-web-node:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
+            .concept-web-node:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+
+            .concept-web-node .concept-subj-pill {
+                margin-bottom: 5px;
+                display: inline-block;
+            }
+
+            .concept-web-node .web-node-title {
+                display: block;
+                font-size: 12.5px;
+                font-weight: 600;
+                color: var(--text);
+                line-height: 1.3;
+                word-break: break-word;
+            }
+
+        .concept-web-links-list {
+            margin-top: 14px;
+        }
+
+        .web-link-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-bright);
+            border-radius: var(--radius);
+            background: var(--surface);
+            margin-bottom: 6px;
+            font-size: 12.5px;
+            color: var(--text2);
+        }
+
+        .web-link-row b { color: var(--text); font-weight: 600; }
+        .web-link-row .rel { color: var(--accent-bright); font-style: italic; }
+
+        .web-link-delete-btn {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 10px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text3);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 5px;
+            transition: color 0.12s, background 0.12s;
+            flex-shrink: 0;
+        }
+
+            .web-link-delete-btn:hover { color: #F87171; background: rgba(239,68,68,0.12); }
+
+        .concept-web-hint {
+            text-align: center;
+            font-size: 11.5px;
+            color: var(--text3);
+            margin-top: 8px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        /* ─────────────────────────────────────────
            RESPONSIVE
         ───────────────────────────────────────── */
         @media (max-width: 700px) {
@@ -2731,21 +2923,47 @@
             <div id="panel-concepts" class="panel">
                 <div class="page-header">
                     <h1>Concept bank</h1>
-                    <p>Save formulas, reactions, definitions, and key ideas you keep forgetting. Add them here once; review them anytime.</p>
+                    <p>Save formulas, reactions, definitions, and key ideas you keep forgetting — then, once you've learned two of them, string them together to see how they connect.</p>
                 </div>
-                <div class="concept-toolbar">
-                    <input type="text" id="concept-search" class="concept-search-input" placeholder="Search concepts…" oninput="renderConcepts()">
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <select class="concept-filter-select" id="concept-filter" onchange="renderConcepts()">
-                            <option value="">All subjects</option>
-                            <option value="chem">CHEM</option>
-                            <option value="biol">BIOL</option>
-                            <option value="general">General</option>
-                        </select>
-                        <button class="concept-add-btn" onclick="addConcept()">+ Add concept</button>
+
+                <div class="concept-view-toggle">
+                    <button class="concept-view-btn active" id="concept-view-cards-btn" onclick="switchConceptView('cards')">🗂 Cards</button>
+                    <button class="concept-view-btn" id="concept-view-web-btn" onclick="switchConceptView('web')">🕸 Web</button>
+                </div>
+
+                <div id="concept-cards-view">
+                    <div class="concept-toolbar">
+                        <input type="text" id="concept-search" class="concept-search-input" placeholder="Search concepts…" oninput="renderConcepts()">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select class="concept-filter-select" id="concept-filter" onchange="renderConcepts()">
+                                <option value="">All subjects</option>
+                                <option value="chem">CHEM</option>
+                                <option value="biol">BIOL</option>
+                                <option value="general">General</option>
+                            </select>
+                            <button class="concept-add-btn" onclick="addConcept()">+ Add concept</button>
+                        </div>
                     </div>
+                    <div id="concept-list"></div>
                 </div>
-                <div id="concept-list"></div>
+
+                <div id="concept-web-view" style="display:none;">
+                    <div class="concept-web-toolbar">
+                        <select id="web-link-from"></select>
+                        <span class="concept-web-arrow">→</span>
+                        <input type="text" id="web-link-relation" placeholder="relationship (e.g. causes, is regulated by)">
+                        <span class="concept-web-arrow">→</span>
+                        <select id="web-link-to"></select>
+                        <button class="concept-web-link-btn" onclick="addConceptLink()">+ String them together</button>
+                    </div>
+                    <div class="concept-web-canvas-wrap">
+                        <div id="concept-web-canvas">
+                            <svg class="web-strings" id="web-string-svg"></svg>
+                        </div>
+                    </div>
+                    <p class="concept-web-hint">Drag any card to rearrange the web. Add concepts from the Cards tab first, then connect them here.</p>
+                    <div class="concept-web-links-list" id="concept-links-list"></div>
+                </div>
             </div>
 
             <div id="panel-grades" class="panel">
@@ -4071,20 +4289,28 @@
         const grid = document.getElementById('sem-grid');
         if (!grid) return;
 
-        const allTypes = ['chem','chem_lec2','chem_lec3','chem_practical','chem_tutorial','biol','biol_lec2','biol_lec3','biol_workshop','biol_practical','review'];
         let html = '';
 
         for (let w = 1; w <= WEEKS; w++) {
         let done = 0, total = 0, confusedCount = 0;
 
-        allTypes.forEach(type => {
+        // Only count card types actually scheduled this week (mirrors the
+        // gating logic in getStreakTypesForWeekday), instead of a fixed
+        // 11-type list — otherwise weeks without every type (e.g. no
+        // workshop/practical that week) show an inflated total.
+        const weekTypes = new Set();
+        for (let dow = 0; dow <= 6; dow++) {
+        getStreakTypesForWeekday(dow, w).forEach(t => {
+        if (t !== 'review_next_week') weekTypes.add(t);
+        });
+        }
+
+        weekTypes.forEach(type => {
         const k = sk(w, type);
-        if (state[k]) {
         total++;
+        if (state[k]) {
         if (state[k].lectureChecked) done++;
         if (state[k].confused) confusedCount++;
-        } else {
-        total++;
         }
         });
 
@@ -4160,6 +4386,7 @@
         concepts.unshift({ id, subj: 'general', title: '', body: '' });
         saveConcepts();
         renderConcepts();
+        refreshConceptWebIfActive();
         setTimeout(() => {
         const el = document.getElementById('ctitle-' + id);
         if (el) el.focus();
@@ -4172,12 +4399,16 @@
         c[field] = value;
         saveConcepts();
         if (field === 'subj') renderConcepts();
+        refreshConceptWebIfActive();
         }
 
         function deleteConcept(id) {
         concepts = concepts.filter(x => x.id !== id);
+        conceptLinks = conceptLinks.filter(l => l.fromId !== id && l.toId !== id);
         saveConcepts();
+        saveConceptLinks();
         renderConcepts();
+        refreshConceptWebIfActive();
         }
 
         function renderConcepts() {
@@ -4218,6 +4449,183 @@
         </div>
         </div>`;
         }).join('');
+        }
+
+        /* ── Concept Web ──────────────────────────── */
+        let conceptLinks = [];
+        let conceptPositions = {};
+        let conceptView = 'cards';
+        let webDragState = null;
+
+        function loadConceptLinks() {
+        try {
+        const l = localStorage.getItem('unimelb_concept_links');
+        if (l) conceptLinks = JSON.parse(l);
+        const p = localStorage.getItem('unimelb_concept_positions');
+        if (p) conceptPositions = JSON.parse(p);
+        } catch(e) { conceptLinks = []; conceptPositions = {}; }
+        }
+
+        function saveConceptLinks() {
+        try { localStorage.setItem('unimelb_concept_links', JSON.stringify(conceptLinks)); } catch(e) {}
+        }
+
+        function saveConceptPositions() {
+        try { localStorage.setItem('unimelb_concept_positions', JSON.stringify(conceptPositions)); } catch(e) {}
+        }
+
+        function switchConceptView(view) {
+        conceptView = view;
+        document.getElementById('concept-view-cards-btn').classList.toggle('active', view === 'cards');
+        document.getElementById('concept-view-web-btn').classList.toggle('active', view === 'web');
+        document.getElementById('concept-cards-view').style.display = view === 'cards' ? 'block' : 'none';
+        document.getElementById('concept-web-view').style.display = view === 'web' ? 'block' : 'none';
+        if (view === 'web') renderConceptWeb();
+        }
+
+        function refreshConceptWebIfActive() {
+        if (conceptView === 'web') renderConceptWeb();
+        }
+
+        function conceptEnsurePosition(id) {
+        if (!conceptPositions[id]) {
+        const idx = Object.keys(conceptPositions).length;
+        const angle = idx * 0.85;
+        const radius = 110 + idx * 20;
+        conceptPositions[id] = {
+        x: Math.max(10, 680 + Math.cos(angle) * radius),
+        y: Math.max(10, 450 + Math.sin(angle) * radius)
+        };
+        }
+        return conceptPositions[id];
+        }
+
+        function conceptTitle(id) {
+        const c = concepts.find(x => x.id === id);
+        return c ? (c.title || 'Untitled concept') : '(deleted concept)';
+        }
+
+        function renderConceptWeb() {
+        const fromSel = document.getElementById('web-link-from');
+        const toSel = document.getElementById('web-link-to');
+        const opts = concepts.map(c => `<option value="${c.id}">${escHtml(c.title || 'Untitled concept')}</option>`).join('');
+        fromSel.innerHTML = opts || '<option value="">Add a concept first</option>';
+        toSel.innerHTML = opts || '<option value="">Add a concept first</option>';
+
+        const canvas = document.getElementById('concept-web-canvas');
+        canvas.querySelectorAll('.concept-web-node').forEach(n => n.remove());
+
+        concepts.forEach(c => {
+        const pos = conceptEnsurePosition(c.id);
+        const subjLabel = c.subj === 'chem' ? 'CHEM' : c.subj === 'biol' ? 'BIOL' : 'General';
+        const node = document.createElement('div');
+        node.className = 'concept-web-node';
+        node.dataset.id = c.id;
+        node.style.left = pos.x + 'px';
+        node.style.top = pos.y + 'px';
+        node.tabIndex = 0;
+        node.innerHTML = `<span class="concept-subj-pill ${c.subj}">${subjLabel}</span>
+        <span class="web-node-title">${escHtml(c.title || 'Untitled concept')}</span>`;
+        node.addEventListener('mousedown', webStartDrag);
+        node.addEventListener('touchstart', webStartDrag, { passive: false });
+        canvas.appendChild(node);
+        });
+
+        drawWebStrings();
+        renderConceptLinksList();
+        }
+
+        function drawWebStrings() {
+        const svg = document.getElementById('web-string-svg');
+        let html = '';
+        conceptLinks.forEach((link, i) => {
+        if (!concepts.find(c => c.id === link.fromId) || !concepts.find(c => c.id === link.toId)) return;
+        const a = conceptEnsurePosition(link.fromId);
+        const b = conceptEnsurePosition(link.toId);
+        const ax = a.x + 70, ay = a.y + 28;
+        const bx = b.x + 70, by = b.y + 28;
+        const mx = (ax + bx) / 2, my = (ay + by) / 2 + 20;
+        html += `<path class="web-string-path" d="M${ax},${ay} Q${mx},${my} ${bx},${by}" />`;
+        if (link.relation) {
+        const w = Math.min(150, link.relation.length * 6 + 12);
+        html += `<rect class="web-string-label-bg" x="${mx - w/2}" y="${my - 10}" width="${w}" height="14" rx="3"></rect>`;
+        html += `<text class="web-string-label" x="${mx}" y="${my + 1}" text-anchor="middle">${escHtml(link.relation)}</text>`;
+        }
+        });
+        svg.innerHTML = html;
+        }
+
+        function webStartDrag(e) {
+        e.preventDefault();
+        const node = e.currentTarget;
+        const id = node.dataset.id;
+        const canvas = document.getElementById('concept-web-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const point = e.touches ? e.touches[0] : e;
+        const pos = conceptEnsurePosition(id);
+        webDragState = {
+        id,
+        offsetX: point.clientX - rect.left - pos.x,
+        offsetY: point.clientY - rect.top - pos.y
+        };
+        document.addEventListener('mousemove', webOnDrag);
+        document.addEventListener('mouseup', webEndDrag);
+        document.addEventListener('touchmove', webOnDrag, { passive: false });
+        document.addEventListener('touchend', webEndDrag);
+        }
+
+        function webOnDrag(e) {
+        if (!webDragState) return;
+        e.preventDefault();
+        const canvas = document.getElementById('concept-web-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const point = e.touches ? e.touches[0] : e;
+        const x = point.clientX - rect.left - webDragState.offsetX;
+        const y = point.clientY - rect.top - webDragState.offsetY;
+        conceptPositions[webDragState.id] = { x, y };
+        const node = canvas.querySelector(`.concept-web-node[data-id="${webDragState.id}"]`);
+        if (node) { node.style.left = x + 'px'; node.style.top = y + 'px'; }
+        drawWebStrings();
+        }
+
+        function webEndDrag() {
+        if (webDragState) saveConceptPositions();
+        webDragState = null;
+        document.removeEventListener('mousemove', webOnDrag);
+        document.removeEventListener('mouseup', webEndDrag);
+        document.removeEventListener('touchmove', webOnDrag);
+        document.removeEventListener('touchend', webEndDrag);
+        }
+
+        function addConceptLink() {
+        const fromId = document.getElementById('web-link-from').value;
+        const toId = document.getElementById('web-link-to').value;
+        const relation = document.getElementById('web-link-relation').value.trim();
+        if (!fromId || !toId || fromId === toId) return;
+        conceptLinks.push({ id: 'l' + Date.now(), fromId, toId, relation });
+        saveConceptLinks();
+        document.getElementById('web-link-relation').value = '';
+        renderConceptWeb();
+        }
+
+        function deleteConceptLink(id) {
+        conceptLinks = conceptLinks.filter(l => l.id !== id);
+        saveConceptLinks();
+        renderConceptWeb();
+        }
+
+        function renderConceptLinksList() {
+        const container = document.getElementById('concept-links-list');
+        if (!container) return;
+        if (conceptLinks.length === 0) {
+        container.innerHTML = '';
+        return;
+        }
+        container.innerHTML = conceptLinks.map(l => `
+        <div class="web-link-row">
+        <span><b>${escHtml(conceptTitle(l.fromId))}</b> <span class="rel">— ${escHtml(l.relation || 'connects to')} →</span> <b>${escHtml(conceptTitle(l.toId))}</b></span>
+        <button class="web-link-delete-btn" onclick="deleteConceptLink('${l.id}')">✕ Remove</button>
+        </div>`).join('');
         }
 
         /* ── Weekly focus note ────────────────────── */
@@ -4740,6 +5148,7 @@
         loadState();
         loadStreak();
         loadConcepts();
+        loadConceptLinks();
         loadRevCards();
         // Always start in dark mode since that's the default design
         if (!localStorage.getItem('unimelb_dark')) {
