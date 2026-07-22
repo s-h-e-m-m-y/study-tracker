@@ -3445,7 +3445,27 @@
         const k = ensureKey(w, type);
         if (!state[k].taskChecked) state[k].taskChecked = [];
         state[k].taskChecked[idx] = !state[k].taskChecked[idx];
+        maybeAutoCompleteCard(w, type);
         save(); render();
+        }
+
+        // If every task on a card is now ticked, auto-tick the card's own
+        // circle-check too (same as clicking it manually) — but only ever
+        // turns it ON this way. Manually unchecking the card, or unchecking
+        // a task afterward, is left entirely up to the person; this never
+        // auto-unchecks anything.
+        function maybeAutoCompleteCard(w, type) {
+        const k = sk(w, type);
+        const s = state[k];
+        if (!s || s.lectureChecked) return;
+        const tasks = s.tasks || [];
+        const taskChecked = s.taskChecked || [];
+        if (tasks.length === 0) return;
+        const allDone = tasks.every((_, i) => taskChecked[i]);
+        if (!allDone) return;
+        s.lectureChecked = true;
+        s.completedDate = new Date().toISOString();
+        checkWeekComplete(w);
         }
 
         function toggleConfused(w, type) {
