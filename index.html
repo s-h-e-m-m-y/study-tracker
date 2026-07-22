@@ -965,8 +965,11 @@
             .circle-check.checked {
                 background: var(--green);
                 border-color: var(--green);
-                animation: checkPop 0.3s var(--ease-back) both;
                 box-shadow: 0 0 0 3px var(--green-glow);
+            }
+
+            .circle-check.just-checked {
+                animation: checkPop 0.3s var(--ease-back) both;
             }
 
                 .circle-check.checked::after {
@@ -1175,6 +1178,9 @@
             .sq-check.checked {
                 background: var(--green);
                 border-color: var(--green);
+            }
+
+            .sq-check.just-checked {
                 animation: sqPop 0.28s var(--ease-back) both;
             }
 
@@ -3429,8 +3435,22 @@
         }
 
         /* ── Check helpers ────────────────────────── */
+        // Adds the pop-animation class to exactly one freshly-rendered
+        // element (by id) after a render, then removes it once the
+        // animation finishes. Kept separate from the persistent ".checked"
+        // class so re-rendering the whole card list (which happens on
+        // every click) doesn't replay the animation on every already-
+        // checked box — only the one that just transitioned plays it.
+        function playCheckPop(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('just-checked');
+        el.addEventListener('animationend', () => el.classList.remove('just-checked'), { once: true });
+        }
+
         function toggleLectureCheck(w, type, el) {
         const k = ensureKey(w, type);
+        const turningOn = !state[k].lectureChecked;
         state[k].lectureChecked = !state[k].lectureChecked;
         if (state[k].lectureChecked) {
         state[k].completedDate = new Date().toISOString();
@@ -3439,33 +3459,38 @@
         }
         save(); render();
         checkWeekComplete(w);
+        if (turningOn) playCheckPop(`circle-${w}-${type}`);
         }
 
         function toggleTaskCheck(w, type, idx, el) {
         const k = ensureKey(w, type);
         if (!state[k].taskChecked) state[k].taskChecked = [];
+        const turningOn = !state[k].taskChecked[idx];
         state[k].taskChecked[idx] = !state[k].taskChecked[idx];
-        maybeAutoCompleteCard(w, type);
+        const autoCompleted = maybeAutoCompleteCard(w, type);
         save(); render();
+        if (turningOn) playCheckPop(`sq-${w}-${type}-${idx}`);
+        if (autoCompleted) playCheckPop(`circle-${w}-${type}`);
         }
 
         // If every task on a card is now ticked, auto-tick the card's own
         // circle-check too (same as clicking it manually) — but only ever
         // turns it ON this way. Manually unchecking the card, or unchecking
         // a task afterward, is left entirely up to the person; this never
-        // auto-unchecks anything.
+        // auto-unchecks anything. Returns true if it just turned the card on.
         function maybeAutoCompleteCard(w, type) {
         const k = sk(w, type);
         const s = state[k];
-        if (!s || s.lectureChecked) return;
+        if (!s || s.lectureChecked) return false;
         const tasks = s.tasks || [];
         const taskChecked = s.taskChecked || [];
-        if (tasks.length === 0) return;
+        if (tasks.length === 0) return false;
         const allDone = tasks.every((_, i) => taskChecked[i]);
-        if (!allDone) return;
+        if (!allDone) return false;
         s.lectureChecked = true;
         s.completedDate = new Date().toISOString();
         checkWeekComplete(w);
+        return true;
         }
 
         function toggleConfused(w, type) {
@@ -3961,7 +3986,7 @@
         const rows = tagTasks.map(t => {
         const chk = taskChecked[t.origIdx] ? ' checked' : '';
         return `<div class="task-row">
-        <div class="sq-check${chk}" onclick="toggleTaskCheck(${w},'${type}',${t.origIdx},this)"></div>
+        <div class="sq-check${chk}" id="sq-${w}-${type}-${t.origIdx}" onclick="toggleTaskCheck(${w},'${type}',${t.origIdx},this)"></div>
         <div class="task-txt${chk ? ' strike' : ''}" contenteditable="true"
         onblur="updateTaskText(${w},'${type}',${t.origIdx},this.textContent)"
         >${escHtml(t.text)}</div>
@@ -4013,7 +4038,7 @@
 
         return `<div class="${cardClass}" id="card-${w}-${type}">
         <div class="lec-top" onclick="toggleExpand('${k}')">
-        <div class="${circleClass}" onclick="event.stopPropagation();toggleLectureCheck(${w},'${type}',this)"></div>
+        <div class="${circleClass}" id="circle-${w}-${type}" onclick="event.stopPropagation();toggleLectureCheck(${w},'${type}',this)"></div>
         <div class="lec-info">
         <div class="lecture-title-row">
         <div class="title">${label}</div>
