@@ -2601,14 +2601,62 @@
             background-size: 22px 22px;
             height: 56vh;
             min-height: 380px;
-            overflow: auto;
+            overflow: hidden;
             box-shadow: var(--shadow-sm);
+            cursor: grab;
+            touch-action: none;
         }
+
+            .concept-web-canvas-wrap.web-panning { cursor: grabbing; }
 
         #concept-web-canvas {
             position: relative;
             width: 1500px;
             height: 1000px;
+            transform-origin: 0 0;
+        }
+
+        .web-zoom-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+        }
+
+        .web-zoom-btn {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+
+            .web-zoom-btn:hover { border-color: var(--border2); color: var(--text); }
+
+        .web-zoom-pct {
+            min-width: 38px;
+            text-align: center;
+            font-family: 'DM Mono', monospace;
+            font-size: 10.5px;
+            color: var(--text3);
+            letter-spacing: 0.03em;
+            cursor: pointer;
         }
 
         svg.web-strings { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -2956,12 +3004,17 @@
                         <select id="web-link-to"></select>
                         <button class="concept-web-link-btn" onclick="addConceptLink()">+ String them together</button>
                     </div>
-                    <div class="concept-web-canvas-wrap">
+                    <div class="concept-web-canvas-wrap" id="concept-web-wrap">
                         <div id="concept-web-canvas">
                             <svg class="web-strings" id="web-string-svg"></svg>
                         </div>
+                        <div class="web-zoom-controls">
+                            <button class="web-zoom-btn" onclick="webZoomOut()" title="Zoom out">−</button>
+                            <span class="web-zoom-pct" id="web-zoom-pct" onclick="webZoomReset()" title="Reset zoom">100%</span>
+                            <button class="web-zoom-btn" onclick="webZoomIn()" title="Zoom in">+</button>
+                        </div>
                     </div>
-                    <p class="concept-web-hint">Drag any card to rearrange the web. Add concepts from the Cards tab first, then connect them here.</p>
+                    <p class="concept-web-hint">Drag any card to rearrange the web. Drag empty space to pan around, scroll to zoom. Add concepts from the Cards tab first, then connect them here.</p>
                     <div class="concept-web-links-list" id="concept-links-list"></div>
                 </div>
             </div>
@@ -3265,6 +3318,14 @@
         const n = NAV_IDS[p] ? document.getElementById(NAV_IDS[p]) : null;
         if (n) n.classList.remove('active');
         });
+        // The CHEM/BIOL subject-filter buttons live outside PANELS/NAV_IDS,
+        // so clear their highlight whenever we're not on the subject-filtered view.
+        if (id !== 'subject-filtered') {
+        const chemBtn = document.getElementById('nav-sub-chem');
+        const biolBtn = document.getElementById('nav-sub-biol');
+        if (chemBtn) chemBtn.classList.remove('active');
+        if (biolBtn) biolBtn.classList.remove('active');
+        }
         const panel = document.getElementById('panel-'+id);
         if (panel) panel.classList.add('active');
         const nav = NAV_IDS[id] ? document.getElementById(NAV_IDS[id]) : null;
@@ -4456,6 +4517,79 @@
         let conceptPositions = {};
         let conceptView = 'cards';
         let webDragState = null;
+        let webZoom = 1;
+        let webPanX = 0;
+        let webPanY = 0;
+        let webPanState = null;
+        const WEB_ZOOM_MIN = 0.4;
+        const WEB_ZOOM_MAX = 2.5;
+
+        function applyWebTransform() {
+        const canvas = document.getElementById('concept-web-canvas');
+        if (!canvas) return;
+        canvas.style.transform = `translate(${webPanX}px, ${webPanY}px) scale(${webZoom})`;
+        const pct = document.getElementById('web-zoom-pct');
+        if (pct) pct.textContent = Math.round(webZoom * 100) + '%';
+        }
+
+        function webZoomAt(factor, screenX, screenY) {
+        const wrap = document.getElementById('concept-web-wrap');
+        const rect = wrap.getBoundingClientRect();
+        // Default to the center of the canvas wrap if no cursor position is given (e.g. button click)
+        const sx = screenX != null ? screenX - rect.left : rect.width / 2;
+        const sy = screenY != null ? screenY - rect.top : rect.height / 2;
+        const newZoom = Math.min(WEB_ZOOM_MAX, Math.max(WEB_ZOOM_MIN, webZoom * factor));
+        const k = newZoom / webZoom;
+        webPanX = sx * (1 - k) + webPanX * k;
+        webPanY = sy * (1 - k) + webPanY * k;
+        webZoom = newZoom;
+        applyWebTransform();
+        }
+
+        function webZoomIn() { webZoomAt(1.2); }
+        function webZoomOut() { webZoomAt(1 / 1.2); }
+        function webZoomReset() {
+        webZoom = 1; webPanX = 0; webPanY = 0;
+        applyWebTransform();
+        }
+
+        function webOnWheel(e) {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        webZoomAt(factor, e.clientX, e.clientY);
+        }
+
+        function webWrapMouseDown(e) {
+        // Only start panning if the mousedown started on empty canvas space, not on a concept card
+        if (e.target.closest('.concept-web-node')) return;
+        if (e.button !== undefined && e.button !== 0) return;
+        const point = e.touches ? e.touches[0] : e;
+        webPanState = { startX: point.clientX, startY: point.clientY, startPanX: webPanX, startPanY: webPanY };
+        document.getElementById('concept-web-wrap').classList.add('web-panning');
+        document.addEventListener('mousemove', webWrapMouseMove);
+        document.addEventListener('mouseup', webWrapMouseUp);
+        document.addEventListener('touchmove', webWrapMouseMove, { passive: false });
+        document.addEventListener('touchend', webWrapMouseUp);
+        }
+
+        function webWrapMouseMove(e) {
+        if (!webPanState) return;
+        e.preventDefault();
+        const point = e.touches ? e.touches[0] : e;
+        webPanX = webPanState.startPanX + (point.clientX - webPanState.startX);
+        webPanY = webPanState.startPanY + (point.clientY - webPanState.startY);
+        applyWebTransform();
+        }
+
+        function webWrapMouseUp() {
+        webPanState = null;
+        const wrap = document.getElementById('concept-web-wrap');
+        if (wrap) wrap.classList.remove('web-panning');
+        document.removeEventListener('mousemove', webWrapMouseMove);
+        document.removeEventListener('mouseup', webWrapMouseUp);
+        document.removeEventListener('touchmove', webWrapMouseMove);
+        document.removeEventListener('touchend', webWrapMouseUp);
+        }
 
         function loadConceptLinks() {
         try {
@@ -4480,7 +4614,7 @@
         document.getElementById('concept-view-web-btn').classList.toggle('active', view === 'web');
         document.getElementById('concept-cards-view').style.display = view === 'cards' ? 'block' : 'none';
         document.getElementById('concept-web-view').style.display = view === 'web' ? 'block' : 'none';
-        if (view === 'web') renderConceptWeb();
+        if (view === 'web') { renderConceptWeb(); applyWebTransform(); }
         }
 
         function refreshConceptWebIfActive() {
@@ -4557,16 +4691,18 @@
 
         function webStartDrag(e) {
         e.preventDefault();
+        e.stopPropagation();
         const node = e.currentTarget;
         const id = node.dataset.id;
         const canvas = document.getElementById('concept-web-canvas');
         const rect = canvas.getBoundingClientRect();
         const point = e.touches ? e.touches[0] : e;
         const pos = conceptEnsurePosition(id);
+        // rect reflects the canvas's current pan/zoom, so divide by webZoom to get canvas-local units
         webDragState = {
         id,
-        offsetX: point.clientX - rect.left - pos.x,
-        offsetY: point.clientY - rect.top - pos.y
+        offsetX: (point.clientX - rect.left) / webZoom - pos.x,
+        offsetY: (point.clientY - rect.top) / webZoom - pos.y
         };
         document.addEventListener('mousemove', webOnDrag);
         document.addEventListener('mouseup', webEndDrag);
@@ -4580,8 +4716,8 @@
         const canvas = document.getElementById('concept-web-canvas');
         const rect = canvas.getBoundingClientRect();
         const point = e.touches ? e.touches[0] : e;
-        const x = point.clientX - rect.left - webDragState.offsetX;
-        const y = point.clientY - rect.top - webDragState.offsetY;
+        const x = (point.clientX - rect.left) / webZoom - webDragState.offsetX;
+        const y = (point.clientY - rect.top) / webZoom - webDragState.offsetY;
         conceptPositions[webDragState.id] = { x, y };
         const node = canvas.querySelector(`.concept-web-node[data-id="${webDragState.id}"]`);
         if (node) { node.style.left = x + 'px'; node.style.top = y + 'px'; }
@@ -5150,6 +5286,13 @@
         loadConcepts();
         loadConceptLinks();
         loadRevCards();
+        (function initConceptWebPanZoom() {
+        const wrap = document.getElementById('concept-web-wrap');
+        if (!wrap) return;
+        wrap.addEventListener('mousedown', webWrapMouseDown);
+        wrap.addEventListener('touchstart', webWrapMouseDown, { passive: false });
+        wrap.addEventListener('wheel', webOnWheel, { passive: false });
+        })();
         // Always start in dark mode since that's the default design
         if (!localStorage.getItem('unimelb_dark')) {
         darkMode = true;
