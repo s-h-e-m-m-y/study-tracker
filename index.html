@@ -2659,7 +2659,7 @@
             cursor: pointer;
         }
 
-        svg.web-strings { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        svg.web-strings { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
         .web-string-path { stroke: var(--accent-bright); stroke-width: 2; fill: none; opacity: 0.7; }
         .web-string-label-bg { fill: var(--surface2); opacity: 0.95; }
         .web-string-label {
@@ -3242,6 +3242,21 @@
         };
 
         function sk(w, s) { return `w${w}_${s}`; }
+
+        // Date.now() alone only has millisecond resolution — clicking
+        // "+ Add concept" (or any other add button) twice quickly can
+        // produce the exact same timestamp, giving two different items
+        // the identical id. That silently creates duplicate/ghost DOM
+        // nodes sharing one position record, which is what caused
+        // concept-web connector lines to drift away from the card you
+        // can actually see once one of the duplicates got dragged.
+        // Mixing in a monotonic counter guarantees uniqueness even for
+        // calls made in the same millisecond.
+        let __uidCounter = 0;
+        function uid(prefix) {
+        __uidCounter++;
+        return prefix + Date.now().toString(36) + '_' + __uidCounter.toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+        }
 
         function loadState() {
         try {
@@ -4249,7 +4264,7 @@
         }
 
         function addRevCard() {
-        revCards.push({ id: 'r' + Date.now(), title: 'New Technique', desc: 'Describe the technique.', steps: ['Step one'] });
+        revCards.push({ id: uid('r'), title: 'New Technique', desc: 'Describe the technique.', steps: ['Step one'] });
         saveRevCards(); renderRevision();
         }
 
@@ -4431,6 +4446,36 @@
         /* ── Concept Bank ─────────────────────────── */
         let concepts = [];
 
+        // One-time cleanup for data saved before ids were made collision-proof
+        // (see uid() above). Any concept sharing an id with an earlier one gets
+        // a fresh unique id, and its links/saved canvas position are carried
+        // over to that new id so nothing gets silently dropped or misdrawn.
+        function repairDuplicateConceptIds() {
+        const seen = new Set();
+        let changed = false;
+        concepts.forEach(c => {
+        if (seen.has(c.id)) {
+        const oldId = c.id;
+        const newId = uid('c');
+        c.id = newId;
+        if (conceptPositions[oldId] && !conceptPositions[newId]) {
+        conceptPositions[newId] = { ...conceptPositions[oldId] };
+        }
+        conceptLinks.forEach(l => {
+        if (l.fromId === oldId) l.fromId = newId;
+        if (l.toId === oldId) l.toId = newId;
+        });
+        changed = true;
+        }
+        seen.add(c.id);
+        });
+        if (changed) {
+        saveConcepts();
+        saveConceptLinks();
+        saveConceptPositions();
+        }
+        }
+
         function loadConcepts() {
         try {
         const c = localStorage.getItem('unimelb_concepts');
@@ -4443,7 +4488,7 @@
         }
 
         function addConcept() {
-        const id = 'c' + Date.now();
+        const id = uid('c');
         concepts.unshift({ id, subj: 'general', title: '', body: '' });
         saveConcepts();
         renderConcepts();
@@ -4671,13 +4716,21 @@
 
         function drawWebStrings() {
         const svg = document.getElementById('web-string-svg');
+        const canvas = document.getElementById('concept-web-canvas');
         let html = '';
         conceptLinks.forEach((link, i) => {
         if (!concepts.find(c => c.id === link.fromId) || !concepts.find(c => c.id === link.toId)) return;
-        const a = conceptEnsurePosition(link.fromId);
-        const b = conceptEnsurePosition(link.toId);
-        const ax = a.x + 70, ay = a.y + 28;
-        const bx = b.x + 70, by = b.y + 28;
+        const fromNode = canvas.querySelector(`.concept-web-node[data-id="${link.fromId}"]`);
+        const toNode = canvas.querySelector(`.concept-web-node[data-id="${link.toId}"]`);
+        if (!fromNode || !toNode) return;
+        // Measure the actual rendered card rather than guessing its size —
+        // offsetLeft/Top/Width/Height are in the canvas's own untransformed
+        // coordinate space, same as the svg's, so this stays accurate
+        // regardless of node height (1 vs 2 line titles), pan, or zoom.
+        const ax = fromNode.offsetLeft + fromNode.offsetWidth / 2;
+        const ay = fromNode.offsetTop + fromNode.offsetHeight / 2;
+        const bx = toNode.offsetLeft + toNode.offsetWidth / 2;
+        const by = toNode.offsetTop + toNode.offsetHeight / 2;
         const mx = (ax + bx) / 2, my = (ay + by) / 2 + 20;
         html += `<path class="web-string-path" d="M${ax},${ay} Q${mx},${my} ${bx},${by}" />`;
         if (link.relation) {
@@ -4738,7 +4791,7 @@
         const toId = document.getElementById('web-link-to').value;
         const relation = document.getElementById('web-link-relation').value.trim();
         if (!fromId || !toId || fromId === toId) return;
-        conceptLinks.push({ id: 'l' + Date.now(), fromId, toId, relation });
+        conceptLinks.push({ id: uid('l'), fromId, toId, relation });
         saveConceptLinks();
         document.getElementById('web-link-relation').value = '';
         renderConceptWeb();
@@ -5285,6 +5338,7 @@
         loadStreak();
         loadConcepts();
         loadConceptLinks();
+        repairDuplicateConceptIds();
         loadRevCards();
         (function initConceptWebPanZoom() {
         const wrap = document.getElementById('concept-web-wrap');
