@@ -31,6 +31,14 @@
             --biol-bg: rgba(56, 189, 248, 0.08);
             --biol-mid: #0EA5E9;
             --biol-glow: rgba(56, 189, 248, 0.15);
+            --musbus: #FBBF24;
+            --musbus-bg: rgba(251, 191, 36, 0.08);
+            --musbus-mid: #F59E0B;
+            --musbus-glow: rgba(251, 191, 36, 0.15);
+            --musmmw: #FB7185;
+            --musmmw-bg: rgba(251, 113, 133, 0.08);
+            --musmmw-mid: #F43F5E;
+            --musmmw-glow: rgba(251, 113, 133, 0.15);
             --review: #FB923C;
             --review-bg: rgba(251, 146, 60, 0.08);
             --review-mid: #F97316;
@@ -68,6 +76,10 @@
             --chem-mid: #A855F7;
             --biol-bg: rgba(56, 189, 248, 0.08);
             --biol-mid: #0EA5E9;
+            --musbus-bg: rgba(251, 191, 36, 0.08);
+            --musbus-mid: #F59E0B;
+            --musmmw-bg: rgba(251, 113, 133, 0.08);
+            --musmmw-mid: #F43F5E;
             --review-bg: rgba(251, 146, 60, 0.08);
             --review-mid: #F97316;
             --green-light: rgba(52, 211, 153, 0.08);
@@ -93,6 +105,10 @@
             --chem-mid: #A855F7;
             --biol-bg: rgba(56, 189, 248, 0.08);
             --biol-mid: #0EA5E9;
+            --musbus-bg: rgba(251, 191, 36, 0.1);
+            --musbus-mid: #F59E0B;
+            --musmmw-bg: rgba(251, 113, 133, 0.1);
+            --musmmw-mid: #F43F5E;
             --review-bg: rgba(251, 146, 60, 0.08);
             --review-mid: #F97316;
             --green-light: rgba(52, 211, 153, 0.1);
@@ -2825,7 +2841,12 @@
             white-space: nowrap;
         }
 
-            .topnav-actions .settings-btn:hover {
+            .elective-only { display: none; }
+        body.mode-elective .core-only { display: none !important; }
+        body.mode-elective .elective-only { display: flex; }
+        body.mode-elective .elective-only.topnav-subj-group { display: flex; }
+
+        .topnav-actions .settings-btn:hover {
                 color: var(--text);
                 border-color: var(--accent-bright);
                 background: var(--surface3);
@@ -2852,7 +2873,7 @@
             </div>
             <div class="topnav-bottom">
                 <div class="topnav-links-row">
-                    <div class="topnav-subj-group">
+                    <div class="topnav-subj-group core-only" id="subj-group-core">
                         <button class="nav-btn" id="nav-sub-chem" onclick="switchSubjectView('chem')">
                             <span class="dot" style="background:#C084FC"></span> CHEM
                         </button>
@@ -2860,7 +2881,15 @@
                             <span class="dot" style="background:#38BDF8"></span> BIOL
                         </button>
                     </div>
-                    <div class="topnav-links">
+                    <div class="topnav-subj-group elective-only" id="subj-group-elective">
+                        <button class="nav-btn" id="nav-sub-musbus" onclick="switchTab('elective-bus')">
+                            <span class="dot" style="background:#FBBF24"></span> MUSI20206
+                        </button>
+                        <button class="nav-btn" id="nav-sub-musmmw" onclick="switchTab('elective-mmw')">
+                            <span class="dot" style="background:#FB7185"></span> MUSI20225
+                        </button>
+                    </div>
+                    <div class="topnav-links core-only" id="links-core">
                         <button class="nav-btn active" id="nav-schedule" onclick="switchTab('schedule')">Schedule</button>
                         <button class="nav-btn" id="nav-exam" onclick="switchTab('exam')">Exams</button>
                         <button class="nav-btn" id="nav-revision" onclick="switchTab('revision')">Revision</button>
@@ -2869,6 +2898,10 @@
                         <button class="nav-btn" id="nav-concepts" onclick="switchTab('concepts'); renderConcepts()">Concepts</button>
                         <button class="nav-btn" id="nav-grades" onclick="switchTab('grades'); renderGrades()">Grades</button>
                         <button class="nav-btn" id="nav-topics" onclick="switchTab('topics'); renderTopics()">Topics</button>
+                    </div>
+                    <div class="topnav-links elective-only" id="links-elective">
+                        <button class="nav-btn" id="nav-elective-bus" onclick="switchTab('elective-bus')">Business of Music</button>
+                        <button class="nav-btn" id="nav-elective-mmw" onclick="switchTab('elective-mmw')">Mind &amp; Wellbeing</button>
                     </div>
                 </div>
             </div>
@@ -3045,6 +3078,26 @@
                 <div id="topics-body"></div>
             </div>
 
+            <div id="panel-elective-bus" class="panel">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1>MUSI20206 — The Business of Music</h1>
+                        <p>10 weekly online quizzes (40%) and one written assignment on a topic of your choice (60%). All elements must be submitted to pass.</p>
+                    </div>
+                </div>
+                <div id="elective-bus-body"></div>
+            </div>
+
+            <div id="panel-elective-mmw" class="panel">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1>MUSI20225 — Music, Mind &amp; Wellbeing</h1>
+                        <p>Interactive reflections — initial posts and peer responses (50%) — plus a portfolio with linked oral presentation (50%). All elements must be submitted to pass.</p>
+                    </div>
+                </div>
+                <div id="elective-mmw-body"></div>
+            </div>
+
         </main>
     </div>
 
@@ -3064,6 +3117,20 @@
                     </div>
                     <label class="toggle">
                         <input type="checkbox" id="dark-toggle" onchange="toggleDark(this.checked)">
+                        <div class="toggle-track"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-label">View</div>
+                <div class="settings-row">
+                    <div class="settings-row-label">
+                        Elective mode
+                        <small>Swap the top bar to MUSI20206 &amp; MUSI20225</small>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="elective-mode-toggle" onchange="toggleModeFromSettings(this.checked)">
                         <div class="toggle-track"></div>
                     </label>
                 </div>
@@ -3329,11 +3396,12 @@
         }
 
         /* ── Tabs ─────────────────────────────────── */
-        const PANELS = ['schedule','exam','revision','subject-filtered','srs','overview','concepts','grades','topics'];
+        const PANELS = ['schedule','exam','revision','subject-filtered','srs','overview','concepts','grades','topics','elective-bus','elective-mmw'];
         const NAV_IDS = {
         schedule:'nav-schedule', exam:'nav-exam', revision:'nav-revision',
         'subject-filtered':null, srs:'nav-srs', overview:'nav-overview', concepts:'nav-concepts',
-        grades:'nav-grades', topics:'nav-topics'
+        grades:'nav-grades', topics:'nav-topics',
+        'elective-bus':'nav-elective-bus', 'elective-mmw':'nav-elective-mmw'
         };
 
         function switchTab(id) {
@@ -3356,6 +3424,12 @@
         const nav = NAV_IDS[id] ? document.getElementById(NAV_IDS[id]) : null;
         if (nav) nav.classList.add('active');
 
+        // Mirror the highlight onto the MUSI subject-group buttons in the topnav.
+        const busBtn = document.getElementById('nav-sub-musbus');
+        const mmwBtn = document.getElementById('nav-sub-musmmw');
+        if (busBtn) busBtn.classList.toggle('active', id === 'elective-bus');
+        if (mmwBtn) mmwBtn.classList.toggle('active', id === 'elective-mmw');
+
         const topnav = document.querySelector('.topnav');
         if (id === 'schedule') topnav.classList.add('topnav--schedule');
         else topnav.classList.remove('topnav--schedule');
@@ -3365,6 +3439,8 @@
         if (id === 'srs') renderSRS();
         if (id === 'grades') renderGrades();
         if (id === 'topics') renderTopics();
+        if (id === 'elective-bus') renderElectiveBus();
+        if (id === 'elective-mmw') renderElectiveMmw();
         }
 
         function switchSubjectView(subj) {
@@ -3374,6 +3450,38 @@
         const biolBtn = document.getElementById('nav-sub-biol');
         chemBtn.classList.toggle('active', subj === 'chem');
         biolBtn.classList.toggle('active', subj === 'biol');
+        }
+
+        /* ── Mode toggle (Core subjects / Electives) ── */
+        let appMode = 'core'; // 'core' | 'elective'
+
+        function loadMode() {
+        try {
+        const m = localStorage.getItem('unimelb_mode');
+        if (m === 'elective') appMode = 'elective';
+        } catch(e) {}
+        }
+
+        function applyMode() {
+        document.body.classList.toggle('mode-elective', appMode === 'elective');
+        const cb = document.getElementById('elective-mode-toggle');
+        if (cb) cb.checked = appMode === 'elective';
+        }
+
+        function toggleMode() {
+        appMode = appMode === 'elective' ? 'core' : 'elective';
+        try { localStorage.setItem('unimelb_mode', appMode); } catch(e) {}
+        applyMode();
+        if (appMode === 'elective') switchTab('elective-bus');
+        else switchTab('schedule');
+        }
+
+        function toggleModeFromSettings(checked) {
+        appMode = checked ? 'elective' : 'core';
+        try { localStorage.setItem('unimelb_mode', appMode); } catch(e) {}
+        applyMode();
+        if (appMode === 'elective') switchTab('elective-bus');
+        else switchTab('schedule');
         }
 
         /* ── Settings ─────────────────────────────── */
@@ -5228,6 +5336,244 @@
             saveTopics(data); renderTopics();
         }
 
+        // ── ELECTIVE: MUSI20206 The Business of Music ────────
+        // Lighter-weight than the CHEM/BIOL system by design: no spaced
+        // repetition, just deadline tracking for the two assessed pieces.
+
+        function loadElectiveBus() {
+            try { const s = localStorage.getItem('unimelb_elective_bus'); return s ? JSON.parse(s) : defaultElectiveBus(); }
+            catch(e) { return defaultElectiveBus(); }
+        }
+        function saveElectiveBus(data) {
+            try { localStorage.setItem('unimelb_elective_bus', JSON.stringify(data)); } catch(e) {}
+        }
+        function defaultElectiveBus() {
+            return {
+                quizzes: Array.from({length: 10}, (_, i) => ({ name: `Quiz ${i+1}`, due: '', done: false })),
+                assignment: { topic: '', notes: '', wordTarget: 2400, status: 'Not started' },
+                hurdle: { allQuizzes: false, assignmentSubmitted: false }
+            };
+        }
+
+        const BUS_STATUSES = ['Not started', 'Researching', 'Drafting', 'Submitted'];
+
+        function renderElectiveBus() {
+            const data = loadElectiveBus();
+            const body = document.getElementById('elective-bus-body');
+            if (!body) return;
+
+            const quizRows = data.quizzes.map((q, i) => `
+                <tr>
+                    <td style="padding:8px 20px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" ${q.done ? 'checked' : ''} onchange="busQuizToggle(${i})" style="width:16px;height:16px;accent-color:var(--musbus);cursor:pointer;">
+                            <input value="${escHtml(q.name)}" style="background:transparent;border:none;color:${q.done?'var(--text3)':'var(--text)'};text-decoration:${q.done?'line-through':'none'};font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;padding:2px 0;"
+                                onblur="busQuizField(${i},'name',this.value)">
+                        </label>
+                    </td>
+                    <td style="text-align:right;padding:8px 20px;">
+                        <input type="text" value="${escHtml(q.due)}" placeholder="Week / date"
+                            style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text2);font-size:12px;font-family:'DM Mono',monospace;outline:none;width:110px;padding:2px 0;text-align:right;"
+                            onblur="busQuizField(${i},'due',this.value)">
+                    </td>
+                </tr>`).join('');
+
+            const doneCount = data.quizzes.filter(q => q.done).length;
+
+            body.innerHTML = `
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:16px 20px;background:var(--musbus-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--musbus);">Weekly quizzes · 40%</div>
+                            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.06em;">${doneCount} of ${data.quizzes.length} completed</div>
+                        </div>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tbody>${quizRows}</tbody>
+                    </table>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:16px 20px;background:var(--musbus-bg);border-bottom:1px solid var(--border);">
+                        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--musbus);">Written assignment · 60%</div>
+                        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.06em;">${data.assignment.wordTarget} words (equivalent)</div>
+                    </div>
+                    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+                        <div>
+                            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;margin-bottom:5px;">TOPIC CHOSEN</div>
+                            <input value="${escHtml(data.assignment.topic)}" placeholder="Which topic did you pick?"
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;padding:8px 10px;"
+                                onblur="busAssignField('topic',this.value)">
+                        </div>
+                        <div>
+                            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;margin-bottom:5px;">NOTES / SOURCES / DRAFT PROGRESS</div>
+                            <textarea rows="3" placeholder="Sources, outline, draft notes..."
+                                style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;padding:8px 10px;resize:vertical;"
+                                onblur="busAssignField('notes',this.value)">${escHtml(data.assignment.notes)}</textarea>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;">STATUS:</span>
+                            ${BUS_STATUSES.map(s => `<button onclick="busAssignField('status','${s}')"
+                                style="padding:4px 10px;border-radius:20px;border:1px solid ${data.assignment.status===s?'var(--musbus)':'var(--border)'};background:${data.assignment.status===s?'var(--musbus-bg)':'transparent'};color:${data.assignment.status===s?'var(--musbus)':'var(--text3)'};font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;">${s}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:14px 20px;background:var(--musbus-bg);border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--musbus);">⚠ Hurdle requirement</div>
+                    <div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text2);">
+                            <input type="checkbox" ${data.hurdle.allQuizzes?'checked':''} onchange="busHurdleToggle('allQuizzes')" style="width:16px;height:16px;accent-color:var(--musbus);cursor:pointer;">
+                            All 10 quizzes are genuine, complete attempts
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text2);">
+                            <input type="checkbox" ${data.hurdle.assignmentSubmitted?'checked':''} onchange="busHurdleToggle('assignmentSubmitted')" style="width:16px;height:16px;accent-color:var(--musbus);cursor:pointer;">
+                            Assignment submitted in full (not just a title page)
+                        </label>
+                    </div>
+                </div>`;
+        }
+
+        function busQuizToggle(i) { const d = loadElectiveBus(); d.quizzes[i].done = !d.quizzes[i].done; saveElectiveBus(d); renderElectiveBus(); }
+        function busQuizField(i, field, val) { const d = loadElectiveBus(); d.quizzes[i][field] = val; saveElectiveBus(d); }
+        function busAssignField(field, val) { const d = loadElectiveBus(); d.assignment[field] = val; saveElectiveBus(d); renderElectiveBus(); }
+        function busHurdleToggle(field) { const d = loadElectiveBus(); d.hurdle[field] = !d.hurdle[field]; saveElectiveBus(d); renderElectiveBus(); }
+
+        // ── ELECTIVE: MUSI20225 Music, Mind & Wellbeing ──────
+        // Discussion-based subject: two dated tasks per week (initial post +
+        // peer response) plus an ongoing portfolio, rather than exam recall.
+
+        function loadElectiveMmw() {
+            try {
+                const s = localStorage.getItem('unimelb_elective_mmw');
+                if (!s) return defaultElectiveMmw();
+                const parsed = JSON.parse(s);
+                // Migration: earlier versions stored generic 12-week placeholder
+                // rows (week/initialDue/peerDue) with no real dates. Detect that
+                // old shape and replace it with the real 8 graded-discussion items.
+                const hasOldShape = !parsed.reflections || !parsed.reflections.length || !('num' in parsed.reflections[0]);
+                if (hasOldShape) {
+                    const fresh = defaultElectiveMmw();
+                    fresh.portfolio = parsed.portfolio || fresh.portfolio;
+                    fresh.hurdle = parsed.hurdle || fresh.hurdle;
+                    saveElectiveMmw(fresh);
+                    return fresh;
+                }
+                return parsed;
+            } catch(e) { return defaultElectiveMmw(); }
+        }
+        function saveElectiveMmw(data) {
+            try { localStorage.setItem('unimelb_elective_mmw', JSON.stringify(data)); } catch(e) {}
+        }
+        function defaultElectiveMmw() {
+            return {
+                reflections: [
+                    { num: '2.4', title: 'Musical Identities', availableFrom: 'Jul 25, 00:00', due: 'Aug 9, 23:59', points: 6.25, done: false },
+                    { num: '3.5', title: 'Music in your Culture', availableFrom: 'Aug 2, 04:00', due: 'Aug 16, 23:59', points: 6.25, done: false },
+                    { num: '5.5', title: 'Singing and the Brain', availableFrom: 'Aug 17, 04:00', due: 'Aug 30, 23:59', points: 6.25, done: false },
+                    { num: '6.4', title: 'Music and cognitive abilities', availableFrom: 'Aug 23, 00:00', due: 'Sep 6, 23:59', points: 6.25, done: false },
+                    { num: '7.4', title: 'Exploring Musical Emotions', availableFrom: 'Aug 30, 00:00', due: 'Sep 13, 23:59', points: 6.25, done: false },
+                    { num: '8.2', title: 'Musical Chills', availableFrom: 'Sep 6, 00:00', due: 'Sep 20, 23:59', points: 6.25, done: false },
+                    { num: '10.4', title: 'What does it mean to be musically creative?', availableFrom: 'Sep 20, 17:30', due: 'Oct 11, 23:59', points: 6.25, done: false },
+                    { num: '11.3', title: 'Your own talent development', availableFrom: 'Sep 27, 00:00', due: 'Oct 18, 23:59', points: 6.25, done: false }
+                ],
+                portfolio: { pieces: [], oralDue: '', oralDone: false },
+                hurdle: { reflectionsSubmitted: false, portfolioSubmitted: false }
+            };
+        }
+
+        function renderElectiveMmw() {
+            const data = loadElectiveMmw();
+            const body = document.getElementById('elective-mmw-body');
+            if (!body) return;
+
+            const reflRows = data.reflections.map((r, i) => `
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:10px 20px;width:36px;">
+                        <input type="checkbox" ${r.done?'checked':''} onchange="mmwReflToggle(${i})" style="width:16px;height:16px;accent-color:var(--musmmw);cursor:pointer;">
+                    </td>
+                    <td style="padding:10px 12px;">
+                        <div style="font-size:13px;font-weight:500;color:${r.done?'var(--text3)':'var(--text)'};text-decoration:${r.done?'line-through':'none'};font-family:'DM Sans',sans-serif;">${r.num} · ${escHtml(r.title)}</div>
+                        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Not available until ${escHtml(r.availableFrom)}</div>
+                    </td>
+                    <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
+                        <div style="font-size:12px;color:var(--musmmw);font-family:'DM Mono',monospace;font-weight:500;">Due ${escHtml(r.due)}</div>
+                        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${r.points} pts</div>
+                    </td>
+                </tr>`).join('');
+
+            const pieceRows = data.portfolio.pieces.map((p, i) => `
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                    <input type="checkbox" ${p.done?'checked':''} onchange="mmwPieceToggle(${i})" style="margin-top:3px;width:16px;height:16px;accent-color:var(--musmmw);cursor:pointer;flex-shrink:0;">
+                    <div style="flex:1;min-width:0;">
+                        <input value="${escHtml(p.name)}" placeholder="Portfolio piece name"
+                            style="width:100%;background:transparent;border:none;color:${p.done?'var(--text3)':'var(--text)'};text-decoration:${p.done?'line-through':'none'};font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;outline:none;padding:2px 0;"
+                            onblur="mmwPieceField(${i},'name',this.value)">
+                        <input value="${escHtml(p.notes)}" placeholder="Notes"
+                            style="width:100%;background:transparent;border:none;color:var(--text3);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;padding:2px 0;"
+                            onblur="mmwPieceField(${i},'notes',this.value)">
+                    </div>
+                    <button onclick="mmwPieceDelete(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 6px;flex-shrink:0;">✕</button>
+                </div>`).join('') || `<div style="padding:16px 0;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);">No portfolio pieces yet</div>`;
+
+            body.innerHTML = `
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:16px 20px;background:var(--musmmw-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--musmmw);">Interactive reflections · 50%</div>
+                            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.06em;">${data.reflections.filter(r=>r.done).length} of ${data.reflections.length} submitted</div>
+                        </div>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tbody>${reflRows}</tbody>
+                    </table>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:16px 20px;background:var(--musmmw-bg);border-bottom:1px solid var(--border);">
+                        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--musmmw);">Portfolio + oral presentation · 50%</div>
+                        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);margin-top:3px;letter-spacing:0.06em;">Builds up across the semester</div>
+                    </div>
+                    <div style="padding:12px 20px;">
+                        ${pieceRows}
+                        <button onclick="mmwPieceAdd()"
+                            style="margin-top:10px;display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px dashed var(--border2);border-radius:var(--radius);background:transparent;color:var(--text3);font-size:12px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;">
+                            + Add portfolio piece
+                        </button>
+                        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+                            <input type="checkbox" ${data.portfolio.oralDone?'checked':''} onchange="mmwOralToggle()" style="width:16px;height:16px;accent-color:var(--musmmw);cursor:pointer;">
+                            <span style="font-size:13px;color:var(--text2);">Linked oral presentation</span>
+                            <input value="${escHtml(data.portfolio.oralDue)}" placeholder="due date"
+                                style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text2);font-size:12px;font-family:'DM Mono',monospace;outline:none;width:100px;padding:2px 0;"
+                                onblur="mmwOralField(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+                    <div style="padding:14px 20px;background:var(--musmmw-bg);border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--musmmw);">⚠ Hurdle requirement</div>
+                    <div style="padding:14px 20px;display:flex;flex-direction:column;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text2);">
+                            <input type="checkbox" ${data.hurdle.reflectionsSubmitted?'checked':''} onchange="mmwHurdleToggle('reflectionsSubmitted')" style="width:16px;height:16px;accent-color:var(--musmmw);cursor:pointer;">
+                            All reflections are complete, genuine attempts
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--text2);">
+                            <input type="checkbox" ${data.hurdle.portfolioSubmitted?'checked':''} onchange="mmwHurdleToggle('portfolioSubmitted')" style="width:16px;height:16px;accent-color:var(--musmmw);cursor:pointer;">
+                            Portfolio + oral presentation submitted in full
+                        </label>
+                    </div>
+                </div>`;
+        }
+
+        function mmwReflToggle(i) { const d = loadElectiveMmw(); d.reflections[i].done = !d.reflections[i].done; saveElectiveMmw(d); renderElectiveMmw(); }
+        function mmwPieceAdd() { const d = loadElectiveMmw(); d.portfolio.pieces.push({ name: '', notes: '', done: false }); saveElectiveMmw(d); renderElectiveMmw(); }
+        function mmwPieceDelete(i) { const d = loadElectiveMmw(); d.portfolio.pieces.splice(i,1); saveElectiveMmw(d); renderElectiveMmw(); }
+        function mmwPieceToggle(i) { const d = loadElectiveMmw(); d.portfolio.pieces[i].done = !d.portfolio.pieces[i].done; saveElectiveMmw(d); renderElectiveMmw(); }
+        function mmwPieceField(i, field, val) { const d = loadElectiveMmw(); d.portfolio.pieces[i][field] = val; saveElectiveMmw(d); }
+        function mmwOralToggle() { const d = loadElectiveMmw(); d.portfolio.oralDone = !d.portfolio.oralDone; saveElectiveMmw(d); renderElectiveMmw(); }
+        function mmwOralField(val) { const d = loadElectiveMmw(); d.portfolio.oralDue = val; saveElectiveMmw(d); }
+        function mmwHurdleToggle(field) { const d = loadElectiveMmw(); d.hurdle[field] = !d.hurdle[field]; saveElectiveMmw(d); renderElectiveMmw(); }
+
         // ── GOOGLE DRIVE SYNC ─────────────────────────────────
         const DRIVE_CLIENT_ID = '874464049805-n8ot18to8s1u5hd4r063tqinlhnfmqg5.apps.googleusercontent.com';
         const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -5409,6 +5755,8 @@
 
         // ── Init ────────────────────────────────────────────────
         loadState();
+        loadMode();
+        applyMode();
         loadStreak();
         loadConcepts();
         loadConceptLinks();
@@ -5431,6 +5779,7 @@
         loadFocusNote();
         renderExamPrep();
         renderRevision();
+        if (appMode === 'elective') switchTab('elective-bus');
         driveInit();
         setInterval(updateStreakBadge, 5 * 60 * 1000);
     </script>
