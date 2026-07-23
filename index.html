@@ -192,7 +192,11 @@
             width: 320px;
             margin: 70px 24px 0 0;
             box-shadow: var(--shadow-float);
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            max-height: calc(100vh - 90px);
+            max-height: calc(100dvh - 90px);
             animation: slideUp 0.22s var(--ease-back);
         }
 
@@ -215,6 +219,9 @@
             padding: 16px 18px;
             border-bottom: 1px solid var(--border);
             background: var(--surface2);
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
             .settings-header span {
