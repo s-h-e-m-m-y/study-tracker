@@ -167,6 +167,102 @@
         }
 
         /* ─────────────────────────────────────────
+           CONCEPT DEFINITION MODAL
+        ───────────────────────────────────────── */
+        .concept-def-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 210;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+            .concept-def-overlay.open {
+                display: flex;
+            }
+
+        .concept-def-modal {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-xl);
+            width: 420px;
+            max-width: 100%;
+            max-height: calc(100vh - 48px);
+            max-height: calc(100dvh - 48px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            box-shadow: var(--shadow-float);
+            animation: slideUp 0.22s var(--ease-back);
+        }
+
+        .concept-def-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+            position: sticky;
+            top: 0;
+        }
+
+            .concept-def-header-text {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .concept-def-title {
+                font-family: 'Syne', sans-serif;
+                font-size: 17px;
+                font-weight: 700;
+                color: var(--text);
+                line-height: 1.35;
+            }
+
+        .concept-def-close {
+            width: 26px;
+            height: 26px;
+            flex-shrink: 0;
+            border: 1px solid var(--border2);
+            background: var(--surface3);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+            .concept-def-close:hover {
+                background: var(--border2);
+                color: var(--text);
+                border-color: var(--text3);
+            }
+
+        .concept-def-body {
+            padding: 18px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text2);
+            white-space: pre-wrap;
+        }
+
+            .concept-def-body.empty {
+                color: var(--text3);
+                font-style: italic;
+            }
+
+        /* ─────────────────────────────────────────
            SETTINGS MODAL
         ───────────────────────────────────────── */
         .settings-overlay {
@@ -3225,6 +3321,19 @@
         </div>
     </div>
 
+    <div class="concept-def-overlay" id="concept-def-overlay" onclick="closeConceptDefIfOutside(event)">
+        <div class="concept-def-modal" id="concept-def-modal">
+            <div class="concept-def-header">
+                <div class="concept-def-header-text">
+                    <span class="concept-subj-pill" id="concept-def-pill"></span>
+                    <span class="concept-def-title" id="concept-def-title"></span>
+                </div>
+                <button class="concept-def-close" onclick="closeConceptDef()">✕</button>
+            </div>
+            <div class="concept-def-body" id="concept-def-body"></div>
+        </div>
+    </div>
+
     <canvas id="confetti-canvas"></canvas>
     <div class="toast" id="toast"></div>
 
@@ -4944,7 +5053,12 @@
         webDragState = {
         id,
         offsetX: (point.clientX - rect.left) / webZoom - pos.x,
-        offsetY: (point.clientY - rect.top) / webZoom - pos.y
+        offsetY: (point.clientY - rect.top) / webZoom - pos.y,
+        // remembered so webEndDrag can tell a click (card opens) from an
+        // actual drag (card gets repositioned) — see the threshold check below
+        startClientX: point.clientX,
+        startClientY: point.clientY,
+        moved: false
         };
         document.addEventListener('mousemove', webOnDrag);
         document.addEventListener('mouseup', webEndDrag);
@@ -4958,6 +5072,10 @@
         const canvas = document.getElementById('concept-web-canvas');
         const rect = canvas.getBoundingClientRect();
         const point = e.touches ? e.touches[0] : e;
+        // a few pixels of wobble still counts as a click, not a drag
+        if (!webDragState.moved && (Math.abs(point.clientX - webDragState.startClientX) > 4 || Math.abs(point.clientY - webDragState.startClientY) > 4)) {
+        webDragState.moved = true;
+        }
         const x = (point.clientX - rect.left) / webZoom - webDragState.offsetX;
         const y = (point.clientY - rect.top) / webZoom - webDragState.offsetY;
         conceptPositions[webDragState.id] = { x, y };
@@ -4967,12 +5085,45 @@
         }
 
         function webEndDrag() {
-        if (webDragState) saveConceptPositions();
+        if (webDragState) {
+        if (webDragState.moved) {
+        saveConceptPositions();
+        } else {
+        openConceptDef(webDragState.id);
+        }
+        }
         webDragState = null;
         document.removeEventListener('mousemove', webOnDrag);
         document.removeEventListener('mouseup', webEndDrag);
         document.removeEventListener('touchmove', webOnDrag);
         document.removeEventListener('touchend', webEndDrag);
+        }
+
+        function openConceptDef(id) {
+        const c = concepts.find(x => x.id === id);
+        if (!c) return;
+        const subjLabel = c.subj === 'chem' ? 'CHEM' : c.subj === 'biol' ? 'BIOL' : 'General';
+        const pill = document.getElementById('concept-def-pill');
+        pill.textContent = subjLabel;
+        pill.className = `concept-subj-pill ${c.subj}`;
+        document.getElementById('concept-def-title').textContent = c.title || 'Untitled concept';
+        const bodyEl = document.getElementById('concept-def-body');
+        if (c.body && c.body.trim()) {
+        bodyEl.textContent = c.body;
+        bodyEl.classList.remove('empty');
+        } else {
+        bodyEl.textContent = 'No definition written yet — add one from the Cards tab.';
+        bodyEl.classList.add('empty');
+        }
+        document.getElementById('concept-def-overlay').classList.add('open');
+        }
+
+        function closeConceptDef() {
+        document.getElementById('concept-def-overlay').classList.remove('open');
+        }
+
+        function closeConceptDefIfOutside(e) {
+        if (e.target === document.getElementById('concept-def-overlay')) closeConceptDef();
         }
 
         function addConceptLink() {
