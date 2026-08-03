@@ -2765,6 +2765,73 @@
                 color: white;
             }
 
+        .home-rings-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .home-ring-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 10px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+
+            .home-ring-card:hover { border-color: var(--border2); }
+
+        .home-ring-svg-wrap {
+            position: relative;
+            width: 88px;
+            height: 88px;
+        }
+
+        .home-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+
+        .home-ring-track { fill: none; stroke: var(--surface2); stroke-width: 9; }
+
+        .home-ring-fill {
+            fill: none;
+            stroke-width: 9;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.4s ease;
+        }
+
+        .home-ring-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Syne', sans-serif;
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .home-ring-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 9.5px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text3);
+            text-align: center;
+        }
+
+        @media (max-width: 520px) {
+            .home-rings-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .home-ring-svg-wrap { width: 68px; height: 68px; }
+            .home-ring-center { font-size: 15px; }
+        }
+
         .home-chart-card {
             background: var(--bg);
             border: 1px solid var(--border);
@@ -3424,10 +3491,11 @@
             <div id="panel-home" class="panel active">
                 <div class="page-header">
                     <div class="page-header-text">
-                        <h1>Home</h1>
+                        <h1 id="home-greeting">Hey</h1>
                         <p>A quick look across everything — tap a card to peek inline, or head straight to the full tab.</p>
                     </div>
                 </div>
+                <div class="home-rings-row" id="home-rings-row"></div>
                 <div class="home-chart-card">
                     <div class="home-chart-header">
                         <span class="home-chart-title">Performance progression</span>
@@ -4571,9 +4639,11 @@
 
         function renderHome() {
         renderPerformanceChart();
+        renderHomeGreeting();
         const grid = document.getElementById('home-grid');
         if (!grid) return;
         let cards = '';
+        let ringSchedulePct = 0, ringExamPct = null, ringGradesPct = null;
 
         // Streak
         cards += homeCardHtml({
@@ -4611,6 +4681,7 @@
         const c = countFor(chemTypes), b = countFor(biolTypes);
         const totalDone = c.done + b.done, totalAll = c.all + b.all;
         const pct = totalAll ? Math.round(totalDone / totalAll * 100) : 0;
+        ringSchedulePct = pct;
         const cPct = c.all ? Math.round(c.done / c.all * 100) : 0;
         const bPct = b.all ? Math.round(b.done / b.all * 100) : 0;
         cards += homeCardHtml({
@@ -4638,6 +4709,7 @@
         return { label, when, pct, done, total };
         });
         const soonest = rows.filter(r => r.when.endsWith('d away')).sort((a,b) => parseInt(a.when) - parseInt(b.when))[0];
+        ringExamPct = soonest ? soonest.pct : null;
         cards += homeCardHtml({
         id: 'exam', span: 1, title: 'Exam prep', stat: soonest ? soonest.when : '—', sub: soonest ? `${soonest.label} · ${soonest.pct}% prepped` : 'no dates set',
         color: '#FB923C',
@@ -4717,6 +4789,7 @@
         });
         const withGrade = rows.filter(r => r.currentGrade !== null);
         const avg = withGrade.length ? Math.round(withGrade.reduce((a,r) => a + r.currentGrade, 0) / withGrade.length) : null;
+        ringGradesPct = avg;
         cards += homeCardHtml({
         id: 'grades', span: 1, title: 'Grades', stat: avg === null ? '—' : `${avg}%`, sub: 'current avg',
         color: 'var(--green)',
@@ -4773,6 +4846,39 @@
         })();
 
         grid.innerHTML = cards;
+        renderHomeRings(ringSchedulePct, ringExamPct, ringGradesPct);
+        }
+
+        function renderHomeGreeting() {
+        const el = document.getElementById('home-greeting');
+        if (!el) return;
+        const hour = new Date().getHours();
+        const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+        el.textContent = greeting;
+        }
+
+        function homeRingSvg(pct, color) {
+        const p = pct == null ? 0 : Math.max(0, Math.min(100, pct));
+        const r = 52, circumference = 2 * Math.PI * r;
+        const dash = p / 100 * circumference;
+        return `<div class="home-ring-svg-wrap">
+        <svg class="home-ring-svg" viewBox="0 0 120 120">
+        <circle class="home-ring-track" cx="60" cy="60" r="${r}" />
+        <circle class="home-ring-fill" cx="60" cy="60" r="${r}" stroke="${color}" stroke-dasharray="${dash} ${circumference}" />
+        </svg>
+        <div class="home-ring-center">${pct == null ? '—' : p + '%'}</div>
+        </div>`;
+        }
+
+        function renderHomeRings(schedulePct, examPct, gradesPct) {
+        const wrap = document.getElementById('home-rings-row');
+        if (!wrap) return;
+        const rings = [
+        { label: 'Schedule', pct: schedulePct, color: 'var(--green)', action: "switchTab('schedule')" },
+        { label: 'Exam prep', pct: examPct, color: '#FB923C', action: "switchTab('exam')" },
+        { label: 'Grades', pct: gradesPct, color: 'var(--chem)', action: "switchTab('grades'); renderGrades();" }
+        ];
+        wrap.innerHTML = rings.map(r => `<div class="home-ring-card" onclick="${r.action}">${homeRingSvg(r.pct, r.color)}<span class="home-ring-label">${r.label}</span></div>`).join('');
         }
 
         function renderSchedule() {
