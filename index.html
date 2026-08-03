@@ -2828,9 +2828,60 @@
             letter-spacing: 0.03em;
         }
 
+        .home-mini-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .home-mini-bar-row {
+            display: grid;
+            grid-template-columns: 34px 1fr 34px;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .home-mini-bar-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 9.5px;
+            letter-spacing: 0.05em;
+            color: var(--text3);
+        }
+
+        .home-mini-bar-track {
+            height: 5px;
+            border-radius: 3px;
+            background: var(--surface2);
+            overflow: hidden;
+        }
+
+        .home-mini-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .home-mini-bar-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 9.5px;
+            color: var(--text2);
+            text-align: right;
+        }
+
+        .home-stack-bar-track {
+            display: flex;
+            height: 7px;
+            border-radius: 3px;
+            overflow: hidden;
+            background: var(--surface2);
+        }
+
+        .home-stack-bar-seg { height: 100%; }
+
         .home-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: minmax(96px, auto);
+            grid-auto-flow: dense;
             gap: 14px;
             margin-top: 4px;
         }
@@ -2840,18 +2891,25 @@
             border: 1px solid var(--border);
             border-radius: 16px;
             overflow: hidden;
+            transition: border-color 0.15s;
             display: flex;
             flex-direction: column;
-            transition: border-color 0.15s;
+            grid-column: span 2;
+            grid-row: span 1;
         }
 
             .home-card:hover { border-color: var(--border2); }
 
+            .home-card.span-1 { grid-column: span 1; }
+            .home-card.span-2 { grid-column: span 2; }
+            .home-card.row-2 { grid-row: span 2; }
+
         .home-card-top {
-            padding: 20px 20px 18px;
+            padding: 18px 20px 16px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+            flex: 1;
         }
 
         .home-card-eyebrow {
@@ -2861,7 +2919,7 @@
             font-family: 'DM Mono', monospace;
             font-size: 10px;
             font-weight: 500;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
             color: var(--text3);
         }
@@ -2873,19 +2931,30 @@
             flex-shrink: 0;
         }
 
+        .home-card-stat-block {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         .home-card-stat-num {
             font-family: 'Syne', sans-serif;
-            font-size: 34px;
+            font-size: 30px;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.1;
             color: var(--text);
             letter-spacing: -0.01em;
         }
 
         .home-card-stat-sub {
             font-family: 'DM Sans', sans-serif;
-            font-size: 12px;
+            font-size: 11.5px;
             color: var(--text2);
+        }
+
+        .home-card-visual {
+            margin-top: auto;
         }
 
         .home-card-bar-track {
@@ -2902,7 +2971,6 @@
         }
 
         .home-card-bottom {
-            margin-top: auto;
             display: flex;
             border-top: 1px solid var(--border);
         }
@@ -2914,7 +2982,7 @@
             border: none;
             cursor: pointer;
             font-family: 'DM Sans', sans-serif;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text2);
             transition: all 0.15s;
@@ -2950,6 +3018,18 @@
             }
 
             .home-card-detail .hd-row:last-child { border-bottom: none; }
+
+        @media (max-width: 900px) {
+            .home-grid { grid-template-columns: repeat(2, 1fr); }
+            .home-card.span-2 { grid-column: span 2; }
+            .home-card.span-1 { grid-column: span 1; }
+        }
+
+        @media (max-width: 520px) {
+            .home-grid { grid-template-columns: 1fr; }
+            .home-card, .home-card.span-1, .home-card.span-2 { grid-column: span 1; }
+            .home-card.row-2 { grid-row: span 1; }
+        }
 
         .concept-web-subject-toggle {
             display: flex;
@@ -4390,14 +4470,32 @@
         if (el) el.classList.toggle('open');
         }
 
+        function homeMiniBarsHtml(rows) {
+        return `<div class="home-mini-bars">${rows.map(r => `
+        <div class="home-mini-bar-row">
+        <span class="home-mini-bar-label">${r.label}</span>
+        <div class="home-mini-bar-track"><div class="home-mini-bar-fill" style="width:${Math.max(0, Math.min(100, r.pct))}%;background:${r.color}"></div></div>
+        <span class="home-mini-bar-value">${r.value}</span>
+        </div>`).join('')}</div>`;
+        }
+
+        function homeStackedBarHtml(segments) {
+        const total = segments.reduce((a, s) => a + s.count, 0);
+        if (total === 0) return '';
+        return `<div class="home-stack-bar-track">${segments.filter(s => s.count > 0).map(s => `<div class="home-stack-bar-seg" style="width:${s.count / total * 100}%;background:${s.color}"></div>`).join('')}</div>`;
+        }
+
         function homeCardHtml(cfg) {
         const barHtml = cfg.barPct != null ? `<div class="home-card-bar-track"><div class="home-card-bar-fill" style="width:${cfg.barPct}%;background:${cfg.color || 'var(--green)'}"></div></div>` : '';
-        return `<div class="home-card">
+        const sizeClass = `span-${cfg.span || 1}${cfg.tall ? ' row-2' : ''}`;
+        return `<div class="home-card ${sizeClass}">
         <div class="home-card-top">
         <div class="home-card-eyebrow"><span class="home-card-dot" style="background:${cfg.color || 'var(--text3)'}"></span>${cfg.title}</div>
-        <div class="home-card-stat-num">${cfg.stat}</div>
-        <div class="home-card-stat-sub">${cfg.sub}</div>
-        ${barHtml}
+        <div class="home-card-stat-block">
+        <span class="home-card-stat-num">${cfg.stat}</span>
+        <span class="home-card-stat-sub">${cfg.sub}</span>
+        </div>
+        <div class="home-card-visual">${barHtml}${cfg.extra || ''}</div>
         </div>
         <div class="home-card-detail" id="home-detail-${cfg.id}">${cfg.detail}</div>
         <div class="home-card-bottom">
@@ -4479,7 +4577,7 @@
 
         // Streak
         cards += homeCardHtml({
-        id: 'streak', title: 'Streak', stat: `${streakState.count || 0} 🔥`,
+        id: 'streak', span: 1, title: 'Streak', stat: `${streakState.count || 0} 🔥`,
         sub: `best ${streakState.longest || 0}`, color: '#FB923C',
         detail: `<div class="hd-row"><span>Current streak</span><span>${streakState.count || 0} days</span></div><div class="hd-row"><span>Longest streak</span><span>${streakState.longest || 0} days</span></div>`,
         openAction: "switchTab('schedule')"
@@ -4513,9 +4611,15 @@
         const c = countFor(chemTypes), b = countFor(biolTypes);
         const totalDone = c.done + b.done, totalAll = c.all + b.all;
         const pct = totalAll ? Math.round(totalDone / totalAll * 100) : 0;
+        const cPct = c.all ? Math.round(c.done / c.all * 100) : 0;
+        const bPct = b.all ? Math.round(b.done / b.all * 100) : 0;
         cards += homeCardHtml({
-        id: 'schedule', title: `Schedule · Week ${currentWeek}`, stat: `${pct}%`, sub: `${totalDone}/${totalAll} done`,
-        color: 'var(--green)', barPct: pct,
+        id: 'schedule', span: 2, tall: true, title: `Schedule · Week ${currentWeek}`, stat: `${pct}%`, sub: `${totalDone}/${totalAll} done`,
+        color: 'var(--green)',
+        extra: homeMiniBarsHtml([
+        { label: 'CHEM', pct: cPct, value: `${c.done}/${c.all}`, color: 'var(--chem)' },
+        { label: 'BIOL', pct: bPct, value: `${b.done}/${b.all}`, color: 'var(--biol)' }
+        ]),
         detail: `<div class="hd-row"><span>CHEM</span><span>${c.done}/${c.all}</span></div><div class="hd-row"><span>BIOL</span><span>${b.done}/${b.all}</span></div>`,
         openAction: "switchTab('schedule')"
         });
@@ -4535,8 +4639,9 @@
         });
         const soonest = rows.filter(r => r.when.endsWith('d away')).sort((a,b) => parseInt(a.when) - parseInt(b.when))[0];
         cards += homeCardHtml({
-        id: 'exam', title: 'Exam prep', stat: soonest ? soonest.when : '—', sub: soonest ? `${soonest.label} · ${soonest.pct}% prepped` : 'no dates set',
-        color: '#FB923C', barPct: soonest ? soonest.pct : null,
+        id: 'exam', span: 1, title: 'Exam prep', stat: soonest ? soonest.when : '—', sub: soonest ? `${soonest.label} · ${soonest.pct}% prepped` : 'no dates set',
+        color: '#FB923C',
+        extra: homeMiniBarsHtml(rows.map(r => ({ label: r.label, pct: r.pct, value: `${r.done}/${r.total}`, color: r.label === 'CHEM' ? 'var(--chem)' : 'var(--biol)' }))),
         detail: rows.map(r => `<div class="hd-row"><span>${r.label} · ${r.when}</span><span>${r.done}/${r.total} prep tasks</span></div>`).join(''),
         openAction: "switchTab('exam')"
         });
@@ -4566,9 +4671,14 @@
         });
         }
         });
+        const maxDue = Math.max(chemDue, biolDue, 1);
         cards += homeCardHtml({
-        id: 'srs', title: 'Spaced repetition', stat: `${due}`, sub: due === 1 ? 'card due' : 'cards due',
+        id: 'srs', span: 1, title: 'Spaced repetition', stat: `${due}`, sub: due === 1 ? 'card due' : 'cards due',
         color: '#38BDF8',
+        extra: homeMiniBarsHtml([
+        { label: 'CHEM', pct: chemDue / maxDue * 100, value: `${chemDue}`, color: 'var(--chem)' },
+        { label: 'BIOL', pct: biolDue / maxDue * 100, value: `${biolDue}`, color: 'var(--biol)' }
+        ]),
         detail: `<div class="hd-row"><span>CHEM due</span><span>${chemDue}</span></div><div class="hd-row"><span>BIOL due</span><span>${biolDue}</span></div>`,
         openAction: "switchTab('srs')"
         });
@@ -4579,9 +4689,14 @@
         const chemCount = concepts.filter(c => c.subj === 'chem').length;
         const biolCount = concepts.filter(c => c.subj === 'biol').length;
         const linkCount = conceptLinks.length;
+        const maxC = Math.max(chemCount, biolCount, 1);
         cards += homeCardHtml({
-        id: 'concepts', title: 'Concept bank', stat: `${concepts.length}`, sub: 'concepts saved',
+        id: 'concepts', span: 2, title: 'Concept bank', stat: `${concepts.length}`, sub: `${linkCount} connections made`,
         color: '#C084FC',
+        extra: homeMiniBarsHtml([
+        { label: 'CHEM', pct: chemCount / maxC * 100, value: `${chemCount}`, color: 'var(--chem)' },
+        { label: 'BIOL', pct: biolCount / maxC * 100, value: `${biolCount}`, color: 'var(--biol)' }
+        ]),
         detail: `<div class="hd-row"><span>CHEM</span><span>${chemCount}</span></div><div class="hd-row"><span>BIOL</span><span>${biolCount}</span></div><div class="hd-row"><span>Connections made</span><span>${linkCount}</span></div>`,
         openAction: "switchTab('concepts'); renderConcepts();"
         });
@@ -4603,8 +4718,9 @@
         const withGrade = rows.filter(r => r.currentGrade !== null);
         const avg = withGrade.length ? Math.round(withGrade.reduce((a,r) => a + r.currentGrade, 0) / withGrade.length) : null;
         cards += homeCardHtml({
-        id: 'grades', title: 'Grades', stat: avg === null ? '—' : `${avg}%`, sub: 'current avg',
-        color: 'var(--green)', barPct: avg,
+        id: 'grades', span: 1, title: 'Grades', stat: avg === null ? '—' : `${avg}%`, sub: 'current avg',
+        color: 'var(--green)',
+        extra: homeMiniBarsHtml(rows.map(r => ({ label: r.label, pct: r.currentGrade || 0, value: r.currentGrade === null ? '—' : `${r.currentGrade}%`, color: r.label === 'CHEM' ? 'var(--chem)' : 'var(--biol)' }))),
         detail: rows.map(r => `<div class="hd-row"><span>${r.label}</span><span>${r.currentGrade === null ? 'no results yet' : r.currentGrade + '% (target ' + r.target + '%)'}</span></div>`).join(''),
         openAction: "switchTab('grades'); renderGrades();"
         });
@@ -4615,17 +4731,19 @@
         const t = loadTopics();
         const all = [...(t.chem||[]), ...(t.biol||[])];
         const weak = all.filter(x => x.confidence === 'not started' || x.confidence === 'shaky').length;
+        const confCounts = CONFIDENCE.map(c => ({ label: c, count: all.filter(x => x.confidence === c).length, color: CONF_COLOR[c] }));
         cards += homeCardHtml({
-        id: 'topics', title: 'Topics', stat: `${all.length}`, sub: 'topics tracked',
+        id: 'topics', span: 2, tall: true, title: 'Topics', stat: `${all.length}`, sub: weak ? `${weak} need work` : 'all covered',
         color: '#FBBF24',
-        detail: `<div class="hd-row"><span>CHEM topics</span><span>${(t.chem||[]).length}</span></div><div class="hd-row"><span>BIOL topics</span><span>${(t.biol||[]).length}</span></div><div class="hd-row"><span>Weak spots</span><span>${weak}</span></div>`,
+        extra: homeStackedBarHtml(confCounts.map(c => ({ count: c.count, color: c.color }))),
+        detail: `<div class="hd-row"><span>CHEM topics</span><span>${(t.chem||[]).length}</span></div><div class="hd-row"><span>BIOL topics</span><span>${(t.biol||[]).length}</span></div>` + confCounts.map(c => `<div class="hd-row"><span style="color:${c.color}">${c.label}</span><span>${c.count}</span></div>`).join(''),
         openAction: "switchTab('topics'); renderTopics();"
         });
         })();
 
         // Revision
         cards += homeCardHtml({
-        id: 'revision', title: 'Revision', stat: '📚', sub: 'techniques & tasks',
+        id: 'revision', span: 1, title: 'Revision', stat: '📚', sub: 'techniques & tasks',
         color: '#FB7185',
         detail: `<div class="hd-row"><span>Browse revision techniques</span><span>and this week's tasks</span></div>`,
         openAction: "switchTab('revision')"
@@ -4637,7 +4755,7 @@
         const busDone = (bus.quizzes||[]).filter(q => q.done).length;
         const busTotal = (bus.quizzes||[]).length;
         cards += homeCardHtml({
-        id: 'elective-bus', title: 'Business of Music', stat: `${busDone}/${busTotal}`, sub: 'quizzes done',
+        id: 'elective-bus', span: 1, title: 'Business of Music', stat: `${busDone}/${busTotal}`, sub: 'quizzes done',
         color: '#FBBF24', barPct: busTotal ? Math.round(busDone/busTotal*100) : null,
         detail: `<div class="hd-row"><span>Assignment status</span><span>${bus.assignment ? bus.assignment.status : '—'}</span></div>`,
         openAction: "switchTab('elective-bus')"
@@ -4647,7 +4765,7 @@
         const mmwDone = (mmw.reflections||[]).filter(r => r.done).length;
         const mmwTotal = (mmw.reflections||[]).length;
         cards += homeCardHtml({
-        id: 'elective-mmw', title: 'Mind & Wellbeing', stat: `${mmwDone}/${mmwTotal}`, sub: 'reflections done',
+        id: 'elective-mmw', span: 1, title: 'Mind & Wellbeing', stat: `${mmwDone}/${mmwTotal}`, sub: 'reflections done',
         color: '#FB7185', barPct: mmwTotal ? Math.round(mmwDone/mmwTotal*100) : null,
         detail: `<div class="hd-row"><span>Portfolio oral</span><span>${mmw.portfolio && mmw.portfolio.oralDone ? 'done' : 'pending'}</span></div>`,
         openAction: "switchTab('elective-mmw')"
