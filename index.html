@@ -5636,14 +5636,14 @@
         oninput="updateExamMeta('${subj}','grade',this.value)">
         </div>
         <div class="exam-meta-item">
-        <label>Hours logged</label>
-        <input class="exam-meta-input" type="number" min="0" step="0.5" value="${s.aggregateHours||0}"
-        oninput="updateExamMeta('${subj}','aggregateHours',parseFloat(this.value)||0)">
+        <label>Add hours</label>
+        <input class="exam-meta-input" type="number" step="0.5" placeholder="e.g. 4, Enter to add"
+        onkeydown="handleExamHoursKey(event, '${subj}', this)">
         </div>
         </div>
         <div class="exam-metrics-row">
         <div>
-        <div class="exam-hours-display">${s.aggregateHours||0}h</div>
+        <div class="exam-hours-display" id="exam-hours-stat-${subj}">${s.aggregateHours||0}h</div>
         <div class="exam-hours-label">Hours logged</div>
         </div>
         <div>
@@ -5709,6 +5709,24 @@
         function updateExamMeta(subj, field, val) {
         examState[subj][field] = val;
         save(); renderExamPrep();
+        }
+
+        // Lets you punch in a number of hours (positive to add, negative to
+        // subtract) and hit Enter to fold it straight into the running total
+        // — the field then clears itself so you can immediately enter the
+        // next session without deleting anything first.
+        function handleExamHoursKey(e, subj, el) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const delta = parseFloat(el.value);
+        el.value = '';
+        if (isNaN(delta) || delta === 0) return;
+        const current = examState[subj].aggregateHours || 0;
+        const next = Math.max(0, current + delta);
+        examState[subj].aggregateHours = next;
+        save();
+        const stat = document.getElementById('exam-hours-stat-' + subj);
+        if (stat) stat.textContent = next + 'h';
         }
 
         /* ── Revision Cards ───────────────────────── */
