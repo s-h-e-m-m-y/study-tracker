@@ -2844,6 +2844,86 @@
             .home-ring-center { font-size: 15px; }
         }
 
+        .home-summary-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+            .home-summary-card.visible { display: block; }
+
+        .home-summary-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .home-summary-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .home-summary-text {
+            flex: 1;
+        }
+
+        .home-summary-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text3);
+            margin-bottom: 4px;
+        }
+
+        .home-summary-headline {
+            font-family: 'Syne', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .home-summary-body {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12.5px;
+            color: var(--text2);
+            line-height: 1.55;
+        }
+
+        .home-summary-bullets {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .home-summary-bullet {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: var(--text2);
+        }
+
+            .home-summary-bullet span:last-child {
+                color: var(--text);
+                font-weight: 600;
+            }
+
         .home-chart-card {
             background: var(--bg);
             border: 1px solid var(--border);
@@ -3508,6 +3588,7 @@
                     </div>
                 </div>
                 <div class="home-rings-row" id="home-rings-row"></div>
+                <div class="home-summary-card" id="home-summary-card"></div>
                 <div class="home-chart-card">
                     <div class="home-chart-header">
                         <span class="home-chart-title">Performance progression</span>
@@ -3714,6 +3795,24 @@
             <div class="settings-header">
                 <span>⚙️ Settings</span>
                 <button class="settings-close" onclick="toggleSettings()">✕</button>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-label">Notifications</div>
+                <div class="settings-row">
+                    <div class="settings-row-label">
+                        Daily reminder
+                        <small id="push-status-text">Get a push notification to keep your streak going</small>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="push-toggle" onchange="togglePushNotifications(this.checked)">
+                        <div class="toggle-track"></div>
+                    </label>
+                </div>
+                <div class="settings-row" id="push-time-row" style="display:none;">
+                    <div class="settings-row-label">Reminder time</div>
+                    <input type="time" id="push-time-input" value="18:00" onchange="updatePushTime(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px 10px;font-family:'DM Mono',monospace;">
+                </div>
             </div>
 
             <div class="settings-section">
@@ -4058,6 +4157,8 @@
 
         if (id === 'home') renderHome();
         document.querySelector('.main').classList.toggle('main--wide', id === 'home');
+        const weekRow = document.querySelector('.topnav-week-row');
+        if (weekRow) weekRow.style.display = (id === 'home') ? 'none' : '';
         if (id === 'exam') renderExamPrep();
         if (id === 'revision') renderRevision();
         if (id === 'srs') renderSRS();
@@ -4112,7 +4213,115 @@
         function toggleSettings() {
         const ol = document.getElementById('settings-overlay');
         ol.classList.toggle('open');
-        if (ol.classList.contains('open')) populateSettingsSelects();
+        if (ol.classList.contains('open')) { populateSettingsSelects(); refreshPushToggleState(); }
+        }
+
+        /* ── Web Push notifications ──────────────────
+           Free, no Apple Developer account needed — this is standard
+           browser Web Push, works once the site is added to the iOS
+           home screen (Safari → Share → Add to Home Screen). */
+        const PUSH_WORKER_URL = 'https://study-tracker-push.YOUR-SUBDOMAIN.workers.dev';
+        const VAPID_PUBLIC_KEY = 'BKtYFV7eGAfG4SwBCBSDFfIzTi_4_SCAhk7BdAnfLOrhhBVmgFc6p2ofxm_sJ2hGoPm2VLAXO7Vjk9iK2cN6cVE';
+
+        function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+        }
+
+        // The Worker backend runs in UTC, so convert the person's local
+        // reminder time to UTC minutes-since-midnight here, once, on-device —
+        // that way the server never has to reason about timezones or DST.
+        function localTimeToUTCMinutes(hhmm) {
+        const [h, m] = hhmm.split(':').map(Number);
+        const now = new Date();
+        const local = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+        return local.getUTCHours() * 60 + local.getUTCMinutes();
+        }
+
+        async function refreshPushToggleState() {
+        const toggle = document.getElementById('push-toggle');
+        const statusText = document.getElementById('push-status-text');
+        const timeRow = document.getElementById('push-time-row');
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        statusText.textContent = 'Not supported in this browser — use Safari on iOS after Add to Home Screen';
+        toggle.disabled = true;
+        return;
+        }
+        try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        toggle.checked = !!sub;
+        timeRow.style.display = sub ? 'flex' : 'none';
+        statusText.textContent = sub ? 'Reminders are on' : 'Get a push notification to keep your streak going';
+        } catch (e) {
+        console.error('Push status check failed', e);
+        }
+        }
+
+        async function togglePushNotifications(enable) {
+        const statusText = document.getElementById('push-status-text');
+        const timeRow = document.getElementById('push-time-row');
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        statusText.textContent = 'Not supported in this browser';
+        document.getElementById('push-toggle').checked = false;
+        return;
+        }
+        try {
+        const reg = await navigator.serviceWorker.register('sw.js');
+        if (enable) {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+        statusText.textContent = 'Permission denied — enable notifications for this site in system settings';
+        document.getElementById('push-toggle').checked = false;
+        return;
+        }
+        const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+        const time = document.getElementById('push-time-input').value || '18:00';
+        await fetch(PUSH_WORKER_URL + '/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub, utcMinutes: localTimeToUTCMinutes(time) })
+        });
+        timeRow.style.display = 'flex';
+        statusText.textContent = 'Reminders are on';
+        } else {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+        await fetch(PUSH_WORKER_URL + '/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: sub.endpoint })
+        });
+        await sub.unsubscribe();
+        }
+        timeRow.style.display = 'none';
+        statusText.textContent = 'Get a push notification to keep your streak going';
+        }
+        } catch (e) {
+        console.error('Push toggle failed', e);
+        statusText.textContent = 'Something went wrong enabling notifications';
+        document.getElementById('push-toggle').checked = false;
+        }
+        }
+
+        async function updatePushTime(time) {
+        try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        if (!sub) return;
+        await fetch(PUSH_WORKER_URL + '/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub, utcMinutes: localTimeToUTCMinutes(time) })
+        });
+        } catch (e) {
+        console.error('Failed to update reminder time', e);
+        }
         }
 
         function closeSettingsIfOutside(e) {
@@ -4586,11 +4795,71 @@
         </div>`;
         }
 
+        function homeCurrentWeek() {
+        const wk = weekNumberForDate(new Date());
+        return wk !== null ? wk : currentWeek;
+        }
+
+        function computeWeekSchedule(week) {
+        function countFor(types) {
+        let done = 0, all = 0;
+        types.forEach(type => {
+        const k = sk(week, type);
+        all++;
+        if (state[k] && state[k].lectureChecked) done++;
+        });
+        return { done, all };
+        }
+        const chemTypes = ['chem','chem_lec2','chem_lec3'];
+        if (chemPracticalStartWeek !== null) {
+        const wSince = week - chemPracticalStartWeek;
+        if (wSince >= 0 && wSince % 2 === 0 && (wSince / 2 + 1) <= 6) chemTypes.push('chem_practical');
+        }
+        if (week >= 2) chemTypes.push('chem_tutorial');
+        const biolTypes = ['biol','biol_lec2','biol_lec3'];
+        if (biolStartWeek !== null) {
+        const wSince = week - biolStartWeek;
+        if (wSince >= 0) {
+        if (wSince % 2 === 0 && (wSince / 2 + 1) <= 6) biolTypes.push('biol_workshop');
+        else if ((wSince + 1) / 2 <= 5) biolTypes.push('biol_practical');
+        }
+        }
+        const c = countFor(chemTypes), b = countFor(biolTypes);
+        const done = c.done + b.done, all = c.all + b.all;
+        return { done, all, pct: all ? Math.round(done / all * 100) : 0, cDone: c.done, cAll: c.all, bDone: b.done, bAll: b.all };
+        }
+
         function homeDaysUntil(dateStr) {
         if (!dateStr) return null;
         const today = streakStartOfDay(new Date());
         const target = streakStartOfDay(new Date(dateStr + 'T00:00:00'));
         return Math.round((target - today) / 86400000);
+        }
+
+        function computeSrsDue() {
+        const today = streakStartOfDay(new Date());
+        let due = 0, chemDue = 0, biolDue = 0;
+        ['chem','biol'].forEach(subj => {
+        const types = subj === 'chem' ? ['chem','chem_lec2','chem_lec3'] : ['biol','biol_lec2','biol_lec3'];
+        for (let w = 1; w <= WEEKS; w++) {
+        types.forEach(type => {
+        if (isExemptLecture(w, type)) return;
+        const k = sk(w, type);
+        if (!state[k] || !state[k].lectureChecked) return;
+        const completedDate = state[k].completedDate ? new Date(state[k].completedDate) : null;
+        if (!completedDate) return;
+        const srsK = `w${w}_${type}`;
+        const rec = srsState[srsK] || {};
+        SRS_INTERVALS.forEach(interval => {
+        if (rec[`r${interval}`]) return;
+        const dueDay = streakStartOfDay(completedDate);
+        dueDay.setDate(dueDay.getDate() + interval);
+        if (today >= dueDay) { due++; if (subj === 'chem') chemDue++; else biolDue++; }
+        });
+        });
+        }
+        });
+        return { due, chemDue, biolDue };
         }
 
         function renderPerformanceChart() {
@@ -4653,6 +4922,7 @@
         function renderHome() {
         renderPerformanceChart();
         renderHomeGreeting();
+        renderHomeSummary();
         const grid = document.getElementById('home-grid');
         if (!grid) return;
         let cards = '';
@@ -4666,45 +4936,23 @@
         openAction: "switchTab('schedule')"
         });
 
-        // Schedule (this week)
+        // Schedule (this week) — uses the real current week by date, not
+        // whichever week happens to be open in the Schedule tab.
         (function() {
-        function countFor(types) {
-        let done = 0, all = 0;
-        types.forEach(type => {
-        const k = sk(currentWeek, type);
-        all++;
-        if (state[k] && state[k].lectureChecked) done++;
-        });
-        return { done, all };
-        }
-        const chemTypes = ['chem','chem_lec2','chem_lec3'];
-        if (chemPracticalStartWeek !== null) {
-        const wSince = currentWeek - chemPracticalStartWeek;
-        if (wSince >= 0 && wSince % 2 === 0 && (wSince / 2 + 1) <= 6) chemTypes.push('chem_practical');
-        }
-        if (currentWeek >= 2) chemTypes.push('chem_tutorial');
-        const biolTypes = ['biol','biol_lec2','biol_lec3'];
-        if (biolStartWeek !== null) {
-        const wSince = currentWeek - biolStartWeek;
-        if (wSince >= 0) {
-        if (wSince % 2 === 0 && (wSince / 2 + 1) <= 6) biolTypes.push('biol_workshop');
-        else if ((wSince + 1) / 2 <= 5) biolTypes.push('biol_practical');
-        }
-        }
-        const c = countFor(chemTypes), b = countFor(biolTypes);
-        const totalDone = c.done + b.done, totalAll = c.all + b.all;
-        const pct = totalAll ? Math.round(totalDone / totalAll * 100) : 0;
+        const homeWeek = homeCurrentWeek();
+        const ws = computeWeekSchedule(homeWeek);
+        const pct = ws.pct;
         ringSchedulePct = pct;
-        const cPct = c.all ? Math.round(c.done / c.all * 100) : 0;
-        const bPct = b.all ? Math.round(b.done / b.all * 100) : 0;
+        const cPct = ws.cAll ? Math.round(ws.cDone / ws.cAll * 100) : 0;
+        const bPct = ws.bAll ? Math.round(ws.bDone / ws.bAll * 100) : 0;
         cards += homeCardHtml({
-        id: 'schedule', span: 2, tall: true, title: `Schedule · Week ${currentWeek}`, stat: `${pct}%`, sub: `${totalDone}/${totalAll} done`,
+        id: 'schedule', span: 2, tall: true, title: `Schedule · Week ${homeWeek}`, stat: `${pct}%`, sub: `${ws.done}/${ws.all} done`,
         color: 'var(--green)',
         extra: homeMiniBarsHtml([
-        { label: 'CHEM', pct: cPct, value: `${c.done}/${c.all}`, color: 'var(--chem)' },
-        { label: 'BIOL', pct: bPct, value: `${b.done}/${b.all}`, color: 'var(--biol)' }
+        { label: 'CHEM', pct: cPct, value: `${ws.cDone}/${ws.cAll}`, color: 'var(--chem)' },
+        { label: 'BIOL', pct: bPct, value: `${ws.bDone}/${ws.bAll}`, color: 'var(--biol)' }
         ]),
-        detail: `<div class="hd-row"><span>CHEM</span><span>${c.done}/${c.all}</span></div><div class="hd-row"><span>BIOL</span><span>${b.done}/${b.all}</span></div>`,
+        detail: `<div class="hd-row"><span>CHEM</span><span>${ws.cDone}/${ws.cAll}</span></div><div class="hd-row"><span>BIOL</span><span>${ws.bDone}/${ws.bAll}</span></div>`,
         openAction: "switchTab('schedule')"
         });
         })();
@@ -4734,28 +4982,7 @@
 
         // Spaced repetition due count
         (function() {
-        const today = streakStartOfDay(new Date());
-        let due = 0, chemDue = 0, biolDue = 0;
-        ['chem','biol'].forEach(subj => {
-        const types = subj === 'chem' ? ['chem','chem_lec2','chem_lec3'] : ['biol','biol_lec2','biol_lec3'];
-        for (let w = 1; w <= WEEKS; w++) {
-        types.forEach(type => {
-        if (isExemptLecture(w, type)) return;
-        const k = sk(w, type);
-        if (!state[k] || !state[k].lectureChecked) return;
-        const completedDate = state[k].completedDate ? new Date(state[k].completedDate) : null;
-        if (!completedDate) return;
-        const srsK = `w${w}_${type}`;
-        const rec = srsState[srsK] || {};
-        SRS_INTERVALS.forEach(interval => {
-        if (rec[`r${interval}`]) return;
-        const dueDay = streakStartOfDay(completedDate);
-        dueDay.setDate(dueDay.getDate() + interval);
-        if (today >= dueDay) { due++; if (subj === 'chem') chemDue++; else biolDue++; }
-        });
-        });
-        }
-        });
+        const { due, chemDue, biolDue } = computeSrsDue();
         const maxDue = Math.max(chemDue, biolDue, 1);
         cards += homeCardHtml({
         id: 'srs', span: 1, title: 'Spaced repetition', stat: `${due}`, sub: due === 1 ? 'card due' : 'cards due',
@@ -4892,6 +5119,160 @@
         { label: 'Grades', pct: gradesPct, color: 'var(--chem)', action: "switchTab('grades'); renderGrades();" }
         ];
         wrap.innerHTML = rings.map(r => `<div class="home-ring-card" onclick="${r.action}">${homeRingSvg(r.pct, r.color)}<span class="home-ring-label">${r.label}</span></div>`).join('');
+        }
+
+        // Rules-based analysis of how consistently lectures/tasks are being
+        // checked off — not AI-generated, just plain-English thresholds
+        // applied to real numbers from your own data.
+        //
+        // Reuses the exact same day-of-week logic the streak counter uses
+        // (getStreakTypesForWeekday / weekNumberForDate) so "1/6 done" reads
+        // differently on a Monday (barely anything is due yet) than on a
+        // Friday (most of the week's items are already overdue) — instead of
+        // just comparing a flat done/total ratio with no sense of timing.
+        // Rules-based analysis of how consistently lectures/tasks are being
+        // checked off — not AI-generated, just plain-English thresholds
+        // applied to real numbers from your own data.
+        //
+        // Reuses the exact same day-of-week logic the streak counter uses
+        // (getStreakTypesForWeekday / weekNumberForDate) so "1/6 done" reads
+        // differently on a Monday (barely anything is due yet) than on a
+        // Friday (most of the week's items are already overdue) — instead of
+        // just comparing a flat done/total ratio with no sense of timing.
+        //
+        // The headline/body wording is picked at random from a pool of
+        // phrasings per tier each time this renders, and deliberately stays
+        // qualitative — it won't spell out how many were due this week or
+        // last week, just how things are tracking right now.
+        function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        function computePerformanceSummary() {
+        const realWeek = homeCurrentWeek();
+        if (!realWeek || realWeek < 1) return null;
+
+        const thisWeek = computeWeekSchedule(realWeek);
+
+        let cumDone = 0, cumAll = 0;
+        for (let w = 1; w <= realWeek; w++) {
+        const ws = computeWeekSchedule(w);
+        cumDone += ws.done; cumAll += ws.all;
+        }
+        const cumPct = cumAll ? Math.round(cumDone / cumAll * 100) : null;
+
+        const streak = streakState.count || 0;
+        const longest = streakState.longest || 0;
+        const { due: srsDue } = computeSrsDue();
+
+        if (cumAll === 0) return null;
+
+        // Walk from Monday of this week through today, tallying how many
+        // lecture/task slots were actually due by now (same per-weekday
+        // assignments the streak uses) — this is the pace-aware denominator.
+        const weekOrderDow = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun
+        const todayDow = new Date().getDay();
+        const todayIndex = weekOrderDow.indexOf(todayDow);
+        let expectedSoFar = 0;
+        for (let i = 0; i <= todayIndex; i++) {
+        const types = getStreakTypesForWeekday(weekOrderDow[i], realWeek)
+        .filter(t => t !== 'review' && t !== 'review_next_week');
+        expectedSoFar += types.length;
+        }
+
+        let tone, tier;
+        if (expectedSoFar === 0) {
+        tone = 'neutral'; tier = 'nothingDue';
+        } else {
+        const paceRatio = thisWeek.done / expectedSoFar;
+        if (paceRatio >= 1) { tone = 'good'; tier = thisWeek.done > expectedSoFar ? 'ahead' : 'caughtUp'; }
+        else if (paceRatio >= 0.7) { tone = 'good'; tier = 'onPace'; }
+        else if (paceRatio >= 0.4) { tone = 'neutral'; tier = 'aBitBehind'; }
+        else { tone = 'warn'; tier = 'behind'; }
+        }
+
+        const toneColor = tone === 'good' ? 'var(--green)' : tone === 'warn' ? '#FB923C' : '#38BDF8';
+        const icon = tone === 'good' ? '✓' : tone === 'warn' ? '!' : '·';
+
+        const headlinePool = {
+        ahead: ['Ahead of pace', 'Getting ahead of schedule', 'Out in front today', 'Comfortably ahead'],
+        caughtUp: ['Fully caught up', 'All squared away', 'Nothing outstanding', 'Right on track'],
+        onPace: ['On pace', 'Keeping pace', 'Tracking well', 'Right where you should be'],
+        aBitBehind: ['A little behind pace', 'Slightly behind', 'Just a bit off pace', 'Trailing a touch'],
+        behind: ['Falling behind pace', 'Losing ground', 'Behind where you should be', 'Slipping behind'],
+        nothingDue: ['Nothing due yet', 'Clear for now', 'Nothing on the board yet', 'Quiet start to the week']
+        };
+
+        const bodyPool = {
+        ahead: [
+        "You're already through more than what's expected of you today — nice work.",
+        "You've pushed past what's currently due — you're working ahead.",
+        "Everything due so far is done, plus a bit more."
+        ],
+        caughtUp: [
+        "Everything that's come due so far has been handled.",
+        "You're on top of everything expected of you right now.",
+        "Nothing outstanding at the moment — you're current."
+        ],
+        onPace: [
+        "You're keeping up with what's expected, more or less.",
+        "Mostly on top of things — just a little left to catch up on.",
+        "You're tracking reasonably well against what's due."
+        ],
+        aBitBehind: [
+        "A few things have slipped, nothing drastic yet.",
+        "You're a bit behind on what's expected so far — worth catching up soon.",
+        "Slightly behind — an easy gap to close if you get to it soon."
+        ],
+        behind: [
+        "Quite a bit has piled up that hasn't been checked off yet.",
+        "You're notably behind on what's expected right now.",
+        "A fair amount has slipped — might be worth catching up today."
+        ],
+        nothingDue: [
+        "Nothing's been due yet — plenty of time still ahead this week.",
+        "Early days this week — nothing outstanding yet.",
+        "Quiet for now — nothing has come due."
+        ]
+        };
+
+        const bodyParts = [pickRandom(bodyPool[tier])];
+        if (streak === 0 && longest > 0) {
+        bodyParts.push(`Your streak reset — it previously reached ${longest} day${longest === 1 ? '' : 's'}.`);
+        } else if (streak > 0) {
+        bodyParts.push(`You're on a ${streak}-day streak of checking something off.`);
+        }
+        if (srsDue > 3) {
+        bodyParts.push(`${srsDue} spaced-repetition reviews have built up — worth clearing before more pile on.`);
+        }
+
+        const bullets = [
+        { label: 'Due by today', value: `${thisWeek.done}/${expectedSoFar}` },
+        { label: 'Overall this semester', value: `${cumDone}/${cumAll} (${cumPct}%)` },
+        { label: 'Current streak', value: `${streak} day${streak === 1 ? '' : 's'} (best ${longest})` },
+        { label: 'SRS reviews due', value: `${srsDue}` }
+        ];
+
+        return { tone, toneColor, icon, headline: pickRandom(headlinePool[tier]), body: bodyParts.join(' '), bullets };
+        }
+
+        function renderHomeSummary() {
+        const card = document.getElementById('home-summary-card');
+        if (!card) return;
+        const summary = computePerformanceSummary();
+        if (!summary) { card.classList.remove('visible'); card.innerHTML = ''; return; }
+
+        card.classList.add('visible');
+        card.innerHTML = `
+        <div class="home-summary-top">
+        <div class="home-summary-icon" style="color:${summary.toneColor}">${summary.icon}</div>
+        <div class="home-summary-text">
+        <div class="home-summary-label">Performance summary</div>
+        <div class="home-summary-headline" style="color:${summary.toneColor}">${summary.headline}</div>
+        <div class="home-summary-body">${summary.body}</div>
+        </div>
+        </div>
+        <div class="home-summary-bullets">
+        ${summary.bullets.map(b => `<div class="home-summary-bullet"><span>${b.label}</span><span>${b.value}</span></div>`).join('')}
+        </div>`;
         }
 
         function renderSchedule() {
@@ -6860,7 +7241,7 @@
         renderExamPrep();
         renderRevision();
         if (appMode === 'elective') switchTab('elective-bus');
-        else { renderHome(); document.querySelector('.main').classList.add('main--wide'); }
+        else { renderHome(); document.querySelector('.main').classList.add('main--wide'); const wr = document.querySelector('.topnav-week-row'); if (wr) wr.style.display = 'none'; }
         driveInit();
         setInterval(updateStreakBadge, 5 * 60 * 1000);
     </script>
