@@ -3570,7 +3570,7 @@
                         <span class="home-chart-title">Schedule progress · last 7 days</span>
                         <div class="perf-chart-legend" id="perf-chart-legend"></div>
                     </div>
-                    <svg id="perf-chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none" class="perf-chart-svg"></svg>
+                    <svg id="perf-chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none" shape-rendering="geometricPrecision" class="perf-chart-svg"></svg>
                     <div id="perf-chart-empty" class="perf-chart-empty">Check off tasks in Schedule to see your daily progress here.</div>
                 </div>
                 <div class="home-grid" id="home-grid"></div>
@@ -4993,7 +4993,7 @@
         let html = '';
         [0, 50, 100].forEach(v => {
         const y = yFor(v);
-        html += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1" />`;
+        html += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1" vector-effect="non-scaling-stroke" />`;
         html += `<text x="${padL - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="var(--text3)" font-family="'DM Mono',monospace">${v}</text>`;
         });
         days.forEach((d, i) => {
@@ -5002,29 +5002,31 @@
 
         let plotted = 0;
         subjectDefs.forEach((s, si) => {
-        // Break the line at days with nothing scheduled, rather than
-        // faking a value — a gap is more honest than a flat/zero point.
-        const segments = [];
-        let current = [];
+        // No gaps: a day with nothing scheduled just holds the previous
+        // value flat (only real data days before the first actual value
+        // are skipped, since there's nothing to hold flat from yet).
+        const pts = [];
+        let lastPct = null;
         days.forEach((d, i) => {
         const counts = d[s.field];
-        if (counts.all === 0) { if (current.length) segments.push(current); current = []; return; }
-        current.push({ x: xFor(i), y: yFor(Math.round(counts.done / counts.all * 100)), pct: Math.round(counts.done / counts.all * 100), label: d.label });
+        let pct, isReal;
+        if (counts.all > 0) { pct = Math.round(counts.done / counts.all * 100); lastPct = pct; isReal = true; }
+        else if (lastPct !== null) { pct = lastPct; isReal = false; }
+        else { return; }
+        pts.push({ x: xFor(i), y: yFor(pct), pct, label: d.label, isReal });
         });
-        if (current.length) segments.push(current);
-        if (segments.some(seg => seg.length)) plotted++;
+        if (pts.length) plotted++;
 
         const gradId = `sched-progress-grad-${si}`;
         html += `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${s.color}" stop-opacity="0.32"/><stop offset="100%" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>`;
-        segments.forEach(seg => {
-        if (seg.length > 1) {
-        const areaPath = `${smoothPath(seg)} L${seg[seg.length - 1].x},${yFor(0)} L${seg[0].x},${yFor(0)} Z`;
+        if (pts.length > 1) {
+        const areaPath = `${smoothPath(pts)} L${pts[pts.length - 1].x},${yFor(0)} L${pts[0].x},${yFor(0)} Z`;
         html += `<path d="${areaPath}" fill="url(#${gradId})" />`;
         }
-        html += `<path d="${smoothPath(seg)}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />`;
-        seg.forEach(pt => {
+        html += `<path d="${smoothPath(pts)}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />`;
+        pts.forEach(pt => {
+        if (!pt.isReal) return; // only mark days that actually had scheduled tasks
         html += `<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="${s.color}"><title>${escHtml(pt.label)}: ${pt.pct}%</title></circle>`;
-        });
         });
         });
 
@@ -6478,6 +6480,9 @@
         const svg = document.getElementById('web-string-svg');
         const canvas = document.getElementById('concept-web-canvas');
         const visibleIds = new Set(conceptWebVisible().map(c => c.id));
+        // Match the connector lines to whichever subject's web is showing,
+        // instead of a fixed accent color — CHEM strings read purple, BIOL blue.
+        const strandColor = conceptWebSubject === 'chem' ? 'var(--chem)' : 'var(--biol)';
         let html = '';
         conceptLinks.forEach((link, i) => {
         if (!visibleIds.has(link.fromId) || !visibleIds.has(link.toId)) return;
@@ -6493,11 +6498,11 @@
         const bx = toNode.offsetLeft + toNode.offsetWidth / 2;
         const by = toNode.offsetTop + toNode.offsetHeight / 2;
         const mx = (ax + bx) / 2, my = (ay + by) / 2 + 20;
-        html += `<path class="web-string-path" d="M${ax},${ay} Q${mx},${my} ${bx},${by}" />`;
+        html += `<path class="web-string-path" style="stroke:${strandColor}" d="M${ax},${ay} Q${mx},${my} ${bx},${by}" />`;
         if (link.relation) {
         const w = Math.min(150, link.relation.length * 6 + 12);
         html += `<rect class="web-string-label-bg" x="${mx - w/2}" y="${my - 10}" width="${w}" height="14" rx="3"></rect>`;
-        html += `<text class="web-string-label" x="${mx}" y="${my + 1}" text-anchor="middle">${escHtml(link.relation)}</text>`;
+        html += `<text class="web-string-label" style="fill:${strandColor}" x="${mx}" y="${my + 1}" text-anchor="middle">${escHtml(link.relation)}</text>`;
         }
         });
         svg.innerHTML = html;
